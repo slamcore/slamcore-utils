@@ -1,0 +1,16 @@
+{
+  "dataset_links": {
+    "Euroc": "https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets",
+    "OpenlorisMain": "https://lifelong-robotic-vision.github.io/dataset/scene",
+    "OpenlorisMarket": "https://lifelong-robotic-vision.github.io/dataset/scene",
+    "Tum512": "https://vision.in.tum.de/data/datasets/visual-inertial-dataset",
+    "Tum1024": "https://vision.in.tum.de/data/datasets/visual-inertial-dataset"
+  },
+  "manual_dl_remarks": {
+    "Euroc": "The dataset must be in the \"ASL Dataset Format\" version",
+    "OpenlorisMain": "You have to fill in this form first to gain access: http://intellabs.sv.mikecrm.com/Nv8LzXF",
+    "OpenlorisMarket": "You have to fill in this form first to gain access: http://intellabs.sv.mikecrm.com/Nv8LzXF",
+    "Tum512": "The dataset  must be in the \"Euroc / DSO 512x512\" format",
+    "Tum1024": "The dataset  must be in the \"Euroc / DSO 1024x1024\" format"
+  }
+}

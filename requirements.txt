@@ -1,0 +1,4 @@
+# in case people don't want to install the tool globally but do want to install its
+# dependencies
+numpy
+questionary

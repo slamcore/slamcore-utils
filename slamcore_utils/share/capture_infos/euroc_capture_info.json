@@ -1,0 +1,840 @@
+{
+    "value0": {
+        "cereal_class_version": 1,
+        "Timestamp": {
+            "time_since_epoch": {
+                "count": 1589305504457511414
+            }
+        },
+        "Version": {
+            "cereal_class_version": 1,
+            "Version": "0.1.0",
+            "BuildDate": "May 12 2020 - 11:43:06",
+            "BuildType": "Release",
+            "BuildVersion": "git-90f21795bdb161f4df36ab67496e9de2989bf4fd-CLEAN"
+        },
+        "Hostname": "draken",
+        "Reader": "",
+        "Propeties": {
+            "cereal_class_version": 1,
+            "CameraProperties": [
+                {
+                    "cereal_class_version": 1,
+                    "ReaderProperties": {
+                        "cereal_class_version": 0,
+                        "value0": [
+                            {
+                                "key": "Manufacturer",
+                                "value": {
+                                    "cereal_class_version": 1,
+                                    "Type": "String",
+                                    "Value": "Euroc",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Model",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "euroc",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "SerialNumber",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "EUROCDEMO",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Firmware",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "2.4",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "ProjectorState",
+                                "value": {
+                                    "Type": "Integer",
+                                    "Value": 0,
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "NumImageSensors",
+                                "value": {
+                                    "Type": "Integer",
+                                    "Value": 2,
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Path",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "MH_01/mav0/",
+                                    "Index": 0
+                                }
+                            }
+                        ]
+                    },
+                    "SensorProperties": [
+                        {
+                            "value0": [
+                                {
+                                    "key": "ImageSensorID",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ImageWidth",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 752,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ImageHeight",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 752,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ImageFormat",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveFrameRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "FrameRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 20,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "FrameRateMin",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 10,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "FrameRateMax",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 60,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "SensorType",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveAutoExposure",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "AutoExposure",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveExposure",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ExposureValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ExposureMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ExposureMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 240.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveAutoGain",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveGain",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GainValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 1.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GainMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GainMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 48.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveBrightness",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "BrightnessValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 100.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "BrightnessMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "BrightnessMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 240.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveContrast",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ContrastValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 80.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ContrastMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "ContrastMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 255.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "Live",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 0
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "value0": [
+                                {
+                                    "key": "ImageSensorID",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ImageWidth",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 752,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ImageHeight",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 752,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ImageFormat",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveFrameRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "FrameRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 20,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "FrameRateMin",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 10,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "FrameRateMax",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 60,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "SensorType",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveAutoExposure",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "AutoExposure",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveExposure",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ExposureValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ExposureMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ExposureMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 240.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveAutoGain",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveGain",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "GainValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 1.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "GainMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "GainMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 48.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveBrightness",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "BrightnessValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 100.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "BrightnessMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "BrightnessMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 240.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "HaveContrast",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ContrastValue",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 80.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ContrastMin",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 0.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "ContrastMax",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 255.0,
+                                        "Index": 1
+                                    }
+                                },
+                                {
+                                    "key": "Live",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 1
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "SensorVectorProperties": [
+                        [],
+                        []
+                    ],
+                    "SensorMatrixProperties": [
+                        [],
+                        []
+                    ]
+                }
+            ],
+            "IMUProperties": [
+                {
+                    "cereal_class_version": 1,
+                    "ReaderProperties": {
+                        "cereal_class_version": 0,
+                        "value0": [
+                            {
+                                "key": "Manufacturer",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "Euroc",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Model",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "euroc",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "SerialNumber",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "EUROCDEMO",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Firmware",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "2.4",
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "NumIMUs",
+                                "value": {
+                                    "Type": "Integer",
+                                    "Value": 1,
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Path",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "MH_01/mav0/",
+                                    "Index": 0
+                                }
+                            }
+                        ]
+                    },
+                    "SensorProperties": [
+                        {
+                            "value0": [
+                                {
+                                    "key": "AccelAxes",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 3,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveAccelRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "AccelRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 200,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "AccelRateMin",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 100,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "AccelRateMax",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 500,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "AccelRange",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 4.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GyroAxes",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 3,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "HaveGyroRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 1,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GyroRate",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 200,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GyroRateMin",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 100,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GyroRateMax",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 500,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "GyroRange",
+                                    "value": {
+                                        "Type": "Floating",
+                                        "Value": 500.0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "MagnetoAxes",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 0
+                                    }
+                                },
+                                {
+                                    "key": "Live",
+                                    "value": {
+                                        "Type": "Integer",
+                                        "Value": 0,
+                                        "Index": 0
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "SensorVectorProperties": [
+                        []
+                    ],
+                    "SensorMatrixProperties": [
+                        []
+                    ]
+                }
+            ],
+            "EncoderOdometryProperties": [
+                {
+                    "cereal_class_version": 1,
+                    "ReaderProperties": {
+                        "cereal_class_version": 0,
+                        "value0": [
+                            {
+                                "key": "NumEncoders",
+                                "value": {
+                                    "Type": "Integer",
+                                    "Value": 0,
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Path",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "MH_01/mav0/",
+                                    "Index": 0
+                                }
+                            }
+                        ]
+                    },
+                    "SensorProperties": [],
+                    "SensorVectorProperties": [],
+                    "SensorMatrixProperties": []
+                }
+            ],
+            "PoseOdometryProperties": [
+                {
+                    "cereal_class_version": 1,
+                    "ReaderProperties": {
+                        "cereal_class_version": 0,
+                        "value0": [
+                            {
+                                "key": "Live",
+                                "value": {
+                                    "Type": "Integer",
+                                    "Value": 0,
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Path",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "MH_01/mav0/",
+                                    "Index": 0
+                                }
+                            }
+                        ]
+                    },
+                    "SensorProperties": [],
+                    "SensorVectorProperties": [],
+                    "SensorMatrixProperties": []
+                }
+            ],
+            "PoseProperties": [
+                {
+                    "cereal_class_version": 1,
+                    "ReaderProperties": {
+                        "cereal_class_version": 0,
+                        "value0": [
+                            {
+                                "key": "Live",
+                                "value": {
+                                    "Type": "Integer",
+                                    "Value": 0,
+                                    "Index": 0
+                                }
+                            },
+                            {
+                                "key": "Path",
+                                "value": {
+                                    "Type": "String",
+                                    "Value": "MH_01/mav0/",
+                                    "Index": 0
+                                }
+                            }
+                        ]
+                    },
+                    "SensorProperties": [],
+                    "SensorVectorProperties": [],
+                    "SensorMatrixProperties": []
+                }
+            ]
+        }
+    }
+}

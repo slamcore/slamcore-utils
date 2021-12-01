@@ -1,0 +1,173 @@
+%YAML:1.0
+d400_color_optical_frame:
+   sensor_type: camera
+   sensor_name: d400_color_optical_frame
+   fps: 30
+   width: 848
+   height: 480
+   model: pinhole
+   intrinsics: !!opencv-matrix
+      rows: 1
+      cols: 4
+      dt: d
+      data: [ 6.1145098876953125e+02, 4.3320397949218750e+02,
+          6.1148571777343750e+02, 2.4947302246093750e+02 ]
+   distortion_model: radial-tangential
+   distortion_coefficients: !!opencv-matrix
+      rows: 1
+      cols: 5
+      dt: d
+      data: [ 0., 0., 0., 0., 0. ]
+d400_depth_optical_frame:
+   sensor_type: camera
+   sensor_name: d400_depth_optical_frame
+   fps: 30
+   width: 848
+   height: 480
+   model: pinhole
+   intrinsics: !!opencv-matrix
+      rows: 1
+      cols: 4
+      dt: d
+      data: [ 4.2214370727539062e+02, 4.2700833129882812e+02,
+          4.2214370727539062e+02, 2.4522090148925781e+02 ]
+   distortion_model: radial-tangential
+   distortion_coefficients: !!opencv-matrix
+      rows: 1
+      cols: 5
+      dt: d
+      data: [ 0., 0., 0., 0., 0. ]
+t265_fisheye1_optical_frame:
+   sensor_type: camera
+   sensor_name: t265_fisheye1_optical_frame
+   fps: 30
+   width: 848
+   height: 800
+   model: fisheye
+   intrinsics: !!opencv-matrix
+      rows: 1
+      cols: 4
+      dt: d
+      data: [ 2.8498089599609375e+02, 4.2524438476562500e+02,
+          2.8610238647460938e+02, 3.9846759033203125e+02 ]
+   distortion_model: Kannala-Brandt
+   distortion_coefficients: !!opencv-matrix
+      rows: 1
+      cols: 5
+      dt: d
+      data: [ -7.3047108016908169e-03, 4.3499931693077087e-02,
+          -4.1283041238784790e-02, 7.6524601317942142e-03, 0. ]
+t265_fisheye2_optical_frame:
+   sensor_type: camera
+   sensor_name: t265_fisheye2_optical_frame
+   fps: 30
+   width: 848
+   height: 800
+   model: fisheye
+   intrinsics: !!opencv-matrix
+      rows: 1
+      cols: 4
+      dt: d
+      data: [ 2.8481259155273438e+02, 4.2766159057617188e+02,
+          2.8597601318359375e+02, 3.9712341308593750e+02 ]
+   distortion_model: Kannala-Brandt
+   distortion_coefficients: !!opencv-matrix
+      rows: 1
+      cols: 5
+      dt: d
+      data: [ -6.3794981688261032e-03, 4.1455611586570740e-02,
+          -3.9464488625526428e-02, 6.9808149710297585e-03, 0. ]
+d400_accelerometer:
+   sensor_type: imu
+   sensor_name: d400_accelerometer
+   fps: 250
+   imu_intrinsic: !!opencv-matrix
+      rows: 1
+      cols: 12
+      dt: d
+      data: [ 1.0129998922348022e+00, 1.6299745067954063e-02,
+          -1.6567818820476532e-02, -2.3803437128663063e-02,
+          9.0558832744136453e-04, 1.0179165601730347e+00,
+          -8.2402275875210762e-03, -9.5768600702285767e-02,
+          -2.2675324231386185e-02, 6.7262286320328712e-03,
+          1.0164324045181274e+00, 2.4007377028465271e-01 ]
+   noise_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 0., 0., 0. ]
+   bias_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 0., 0., 0. ]
+d400_gyroscope:
+   sensor_type: imu
+   sensor_name: d400_gyroscope
+   fps: 400
+   imu_intrinsic: !!opencv-matrix
+      rows: 1
+      cols: 12
+      dt: d
+      data: [ 1., 0., 0., -6.7636385210789740e-05, 0., 1., 0.,
+          -9.5424675237154588e-06, 0., 0., 1., -1.7504280549474061e-05 ]
+   noise_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 0., 0., 0. ]
+   bias_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 0., 0., 0. ]
+t265_accelerometer:
+   sensor_type: imu
+   sensor_name: t265_accelerometer
+   fps: 62
+   imu_intrinsic: !!opencv-matrix
+      rows: 1
+      cols: 12
+      dt: d
+      data: [ 1.0138926506042480e+00, 0., 0., -5.1095332950353622e-02,
+          0., 1.0174480676651001e+00, 0., 2.7321520447731018e-01, 0., 0.,
+          1.0285693407058716e+00, 9.4960018992424011e-02 ]
+   noise_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 6.6952452471014112e-05, 6.6952452471014112e-05,
+          6.6952452471014112e-05 ]
+   bias_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 9.9999997473787516e-05, 9.9999997473787516e-05,
+          9.9999997473787516e-05 ]
+t265_gyroscope:
+   sensor_type: imu
+   sensor_name: t265_gyroscope
+   fps: 200
+   imu_intrinsic: !!opencv-matrix
+      rows: 1
+      cols: 12
+      dt: d
+      data: [ 9.9567949771881104e-01, 0., 0., 1.9203490810468793e-03, 0.,
+          9.9803745746612549e-01, 0., 2.1561817266047001e-03, 0., 0.,
+          9.9269545078277588e-01, 1.1997447581961751e-03 ]
+   noise_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 5.1480301408446394e-06, 5.1480301408446394e-06,
+          5.1480301408446394e-06 ]
+   bias_variances: !!opencv-matrix
+      rows: 1
+      cols: 3
+      dt: d
+      data: [ 4.9999999873762135e-07, 4.9999999873762135e-07,
+          4.9999999873762135e-07 ]
+odometer:
+   sensor_type: odom
+   sensor_name: odometer
+   fps: 0

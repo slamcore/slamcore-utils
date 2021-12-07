@@ -10,7 +10,7 @@
 <a href="https://github.com/slamcore/slamcore_utils/actions" alt="lint">
 <img src="https://img.shields.io/badge/checks-mypy%2C%20pyright-brightgreen" /></a>
 <a href="https://badge.fury.io/py/slamcore_utils">
-<img src="https://badge.fury.io/py/slamcore_utils.svg" alt="PyPI version" height="18"></a>
+<img src="https://badge.fury.io/py/slamcore-utils.svg" alt="PyPI version" height="18"></a>
 <!-- <a href="https://pepy.tech/project/slamcore_utils"> -->
 <!-- <img alt="Downloads" src="https://pepy.tech/badge/slamcore_utils"></a> -->
 <a href="https://github.com/psf/black">

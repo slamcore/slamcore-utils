@@ -17,7 +17,6 @@ jobs:
           pip3 install .
           pip3 show slamcore_utils
   unittests:
-
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -30,7 +29,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-
           python-version: ${{ matrix.python-version }}
 
       - name: Python Poetry Action
@@ -75,6 +73,4 @@ jobs:
         uses: JRubics/poetry-publish@v1.9
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         with:
-
           pypi_token: ${{ secrets.PYPI_API_TOKEN }}
-

@@ -56,3 +56,22 @@ def inform_about_extra_deps(
         return wrapper
 
     return wrapper2
+
+
+def xor(*args) -> bool:
+    """True if exactly one of the arguments of the iterable is True.
+
+    >>> xor(0,1,0,)
+    True
+    >>> xor(1,2,3,)
+    False
+    >>> xor(False, False, False)
+    False
+    >>> xor("kalimera", "kalinuxta")
+    False
+    >>> xor("", "a", "")
+    True
+    >>> xor("", "", "")
+    False
+    """
+    return sum([bool(i) for i in args]) == 1

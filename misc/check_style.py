@@ -9,8 +9,7 @@ PKGS = ["slamcore_utils", "tests"]
 def process(f):  # type: ignore
     def wrapper(*args, **kargs):
         proc_args = f(*args, **kargs)
-        p = subprocess.Popen(proc_args)
-        p.communicate()
+        p = subprocess.run(proc_args)
         rc = p.returncode
         if rc == 0:
             print(f"[{f.__name__}] OK")
@@ -54,5 +53,6 @@ if __name__ == "__main__":
     check = "--check-only" in sys.argv
     verbose = "-v" in sys.argv or "--verbose" in sys.argv
     for pkg in PKGS:
+        print(f"\nProcessing {pkg}...\n")
         black(pkg, check=check, verbose=verbose)
         isort(pkg, check=check, verbose=verbose)

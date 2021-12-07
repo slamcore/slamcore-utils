@@ -39,16 +39,16 @@ setup a sample SLAM dataset.
 Here is a sample execution of the said script to enable processing of the `TUM-VI`
 `dataset-room4_1024_16`
 
-![setup-dataset1](./share/images/slamcore-setup-dataset2.gif)
+![setup-dataset2](https://github.com/slamcore/slamcore_utils/raw/master/share/images/slamcore-setup-dataset2.gif)
 
 Here's the same execution for the `OpenLORIS` `cafe1-1` dataset
 
-![setup-dataset1](./share/images/slamcore-setup-dataset1.gif)
+![setup-dataset1](https://github.com/slamcore/slamcore_utils/raw/master/share/images/slamcore-setup-dataset1.gif)
 
 And here's the execution guiding the user to the right download page, when
 the datasets are not available locally yet.
 
-![setup-dataset1](./share/images/slamcore-setup-dataset3.gif)
+![setup-dataset3](https://github.com/slamcore/slamcore_utils/raw/master/share/images/slamcore-setup-dataset3.gif)
 
 ## Installation
 
@@ -57,7 +57,7 @@ Install it directly from PyPI:
 ```sh
 pip3 install --user --upgrade slamcore_utils[tqdm]
 
-# Or if you don't want polished tqdm's progress bars
+# Or if you don't want tqdm's polished progress bars
 pip3 install --user --upgrade slamcore_utils
 ```
 

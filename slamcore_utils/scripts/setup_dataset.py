@@ -112,7 +112,7 @@ def catch_ctrlc_n_exit(fn):
 def _main():
     # setup -----------------------------------------------------------------------------------
     user_note(
-        f"{exec_name} - {__version__}\nSetup a sample dataset for offline/ SLAM evaluation\n"
+        f"{exec_name} - {__version__}\nSetup a sample dataset for offline SLAM evaluation\n"
     )
 
     # select dataset --------------------------------------------------------------------------

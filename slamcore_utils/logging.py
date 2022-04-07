@@ -4,13 +4,6 @@ from pathlib import Path
 
 from slamcore_utils.progress_bar import progress_bar
 
-_verbosity_int_to_str = {
-    0: "INFO",
-    1: "DEBUG",
-    2: "TRACE",
-}
-
-
 class LoggingProfile(Enum):
     """Offers the available logging profiles that the slam_utils apps can run under.
 

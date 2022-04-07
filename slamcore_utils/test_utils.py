@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from subprocess import PIPE
 from typing import Dict, List, Optional, Sequence, Type, Union
 
 import numpy as np
@@ -215,7 +216,7 @@ class UT_Command:
 
             # run it --------------------------------------------------------------------------
             cmd = [exec_path, *args]
-            proc = subprocess.run(cmd, capture_output=True, check=False)
+            proc = subprocess.run(cmd,  stdout=PIPE, stderr=PIPE, check=False)
             stdout, stderr = proc.stdout, proc.stderr
             stdout = stdout.decode("utf-8")
             stderr = stderr.decode("utf-8")

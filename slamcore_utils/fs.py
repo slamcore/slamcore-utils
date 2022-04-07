@@ -5,7 +5,6 @@ from slamcore_utils.logging import logger
 
 """Filesystem-related utilities."""
 
-
 def get_ready_output_path(path: Path, overwrite_path: bool = False, logger=logger) -> Path:
     """
     Get a new valid path to write to. Depending on the `overwrite_path` flag it will either:

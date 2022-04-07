@@ -20,7 +20,12 @@ class DataConverter(ABC):
         # if by this point there are still unused arguments raise an exception
         if kargs:
             raise RuntimeError(
-                f"Unknown arguments passed to {self.__class__.__name__}: {kargs}"
+                f"Unknown arguments passed to {self.__class__.__name__}: {kargs}\n\n"
+                "- If you are a developer and subclassing the DataConverter, "
+                "make sure you explicitly handle "
+                "and the said arguments before calling DataConverter.__init__.\n"
+                "- If you are a user, probably you're not meant to pass the said args, "
+                "or you're passing them the wrong way."
             )
 
     def __call__(self):

@@ -9,6 +9,7 @@ readme = "README.md"
 homepage = "https://github.com/slamcore/slamcore_utils"
 repository = "https://github.com/slamcore/slamcore_utils"
 classifiers = [
+  "Programming Language :: Python :: 3.6",
   "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
@@ -17,21 +18,22 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.6.8,<3.11"
 questionary = "^1.10.0"
-numpy = "^1.21.4"
-tqdm = { version = "^4.62.3", optional = true }
+prompt-toolkit = ">3.0,<=3.0.23"
+numpy = "^1.19.5"
+tqdm = { version = "^4.64.0", optional = true }
 
 [tool.poetry.dev-dependencies]
-pytest = "*"
+pytest = "^7.0.1"
 black = { version = "*", allow-prereleases = true }
-isort = "*"
-mock = "*"
+isort = "^5.10.1"
+mock = "^4.0.3"
 pdbpp = "^0.10.3"
-mypy = "^0.910"
-types-setuptools = "^57.4.4"
-pyright = "^0.0.13"
-pyfakefs = "^4.5.3"
+mypy = ">=0.942"
+types-setuptools = "^57.4.12"
+pyright = "*"
+pyfakefs = "^4.5.6"
 pexpect = "^4.8.0"
 
 [tool.poetry.scripts]

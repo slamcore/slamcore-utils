@@ -16,6 +16,21 @@ from slamcore_utils.logging import logger
 from slamcore_utils.string import get_rand_string
 
 
+def data_path_fn(test_name: str):
+    """
+    Declare the data path for the tests at hand.
+
+    Replace this with a function that returns the root tests location for your own module.
+    """
+    return (
+        Path(__file__).absolute().parent.parent
+        / "tests"
+        / "test_data"
+        / "executables"
+        / str(test_name).replace("-", "_")
+    )
+
+
 class FileComparator(abc.ABC):
     @abc.abstractmethod
     def __call__(self, file: Path, expected_file: Path):
@@ -160,18 +175,7 @@ class UT_Command:
         stderr_contains = self.stderr_contains
         stdout_contains = self.stdout_contains
         cd_test_dir = self.cd_test_dir
-        test_name = self.test_name
-
-        # TODO Probably should come up with something more flexible for defining the data_path
-        # for the tests of each executable.
-        data_path = (
-            Path(__file__).absolute().parent.parent
-            / "tests"
-            / "test_data"
-            / "executables"
-            / str(test_name).replace("-", "_")
-        )
-
+        data_path = data_path_fn(test_name=self.test_name)
         # output paths that are relative must be relative with regards to the "test_data"
         # directory for the test case at hand.
         for i in range(len(outputs)):
@@ -216,7 +220,7 @@ class UT_Command:
 
             # run it --------------------------------------------------------------------------
             cmd = [exec_path, *args]
-            proc = subprocess.run(cmd,  stdout=PIPE, stderr=PIPE, check=False)
+            proc = subprocess.run(cmd, stdout=PIPE, stderr=PIPE, check=False)
             stdout, stderr = proc.stdout, proc.stderr
             stdout = stdout.decode("utf-8")
             stderr = stderr.decode("utf-8")
@@ -224,14 +228,14 @@ class UT_Command:
             # assert stdout/err ---------------------------------------------------------------
             if stdout_contains is not None:
                 for stdout_sample in stdout_contains:
-                    stdout_sample in stdout, (
+                    assert stdout_sample in stdout, (
                         "Required stdout string not found, "
                         f"[{stdout}] should have contained [{stdout_sample}]"
                     )
 
             if stderr_contains is not None:
                 for stderr_sample in stderr_contains:
-                    stderr_sample in stderr, (
+                    assert stderr_sample in stderr, (
                         "Required stderr string not found, "
                         f"[{stderr}] should have contained [{stderr_sample}]"
                     )

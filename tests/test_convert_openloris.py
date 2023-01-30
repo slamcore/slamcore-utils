@@ -58,7 +58,7 @@ def test_convert_openloris_dont_overwrite():
             outputs=[
                 Path("output_0"),
             ],
-            stdout_contains=["Converting OpenLORIS Dataset", "will choose another"],
+            stdout_contains=["Converting OpenLORIS Dataset", "Will choose another"],
             cd_test_dir=True,
         ),
     )

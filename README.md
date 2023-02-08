@@ -101,8 +101,7 @@ setup-dataset
 
 [SLAMcore][slamcore] offers commercial-grade visual-inertial
 simultaneous localisation and mapping (SLAM) software for real-time autonomous
-navigation on robots and drones. [Request
-access](https://www.slamcore.com/sdk-access) today to get started.
+navigation on robots and drones. [Contact us](https://www.slamcore.com/contact) today to get started.
 
 
 [slamcore]: https://www.slamcore.com/

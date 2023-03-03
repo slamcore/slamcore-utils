@@ -45,8 +45,8 @@ class CsvFileComparator(FileComparator):
         np.loadtxt.
         """
         try:
-            # load and try comparing as numeric arrays.
-            # will fail if the values in the CSV are not exclusively numeric
+            # load and try comparing as numeric arrays. Assume first row is a header and always
+            # skip it. Will fail if the values in the CSV are not exclusively numeric
             arr = np.loadtxt(fname=file, delimiter=",", skiprows=1)
             arr_expected = np.loadtxt(fname=expected_file, delimiter=",", skiprows=1)
             assert np.allclose(arr, arr_expected), (
@@ -197,13 +197,18 @@ class UT_Command:
             else:
                 to_remove.append(output)
 
-        s = "Will automatically remove the following files/directories\n\n"
-        s += "\n".join(map(str, to_remove))
-        s += "\n"
-        s += "\nWill preserve the following files/directories\n\n"
-        s += "\n".join(map(str, to_restore))
-        s += "\n"
-        logger.info(s)
+        s = ""
+        if to_remove:
+            s = "\nWill automatically remove the following files/directories\n\n \t- "
+            s += "\n \t- ".join(map(str, to_remove))
+        if to_restore:
+            s += "\n"
+            s += "\nWill preserve the following files/directories\n\n \t- "
+            s += "\n \t- ".join(map(str, to_restore))
+            s += "\n"
+
+        if s:
+            logger.info(f"\n{s}\n")
 
         try:
             # change directory? ---------------------------------------------------------------

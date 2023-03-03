@@ -1,4 +1,4 @@
-# slamcore_utils
+# ``slamcore_utils``
 
 <a href="https://github.com/slamcore/slamcore_utils/actions" alt="CI">
 <img src="https://github.com/slamcore/slamcore_utils/actions/workflows/ci.yml/badge.svg" /></a>
@@ -21,14 +21,14 @@
 <!-- Change this when we add more scripts -->
 
 This repo contains the `slamcore-setup-dataset` script. It can be used for
-installing a sample dataset for offline testing and evaluation of [SLAMcore][slamcore]'s
+installing a sample dataset for offline testing and evaluation of [Slamcore][slamcore]'s
 Localization and Mapping capabilities.
 
 Currently the following types of datasets are supported:
 
-- [EuRoC MAV Datasets](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets)
+- [EuRoC MAV Datasets](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) (use the `ASL Dataset Format` format)
 - [OpenLORIS-Scene Datasets](https://lifelong-robotic-vision.github.io/dataset/scene)
-- [TUM VI Datasets](https://vision.in.tum.de/data/datasets/visual-inertial-dataset)
+- [TUM VI Datasets](https://vision.in.tum.de/data/datasets/visual-inertial-dataset) (use the `Euroc / DSO` format)
 
 ## Usage
 
@@ -97,11 +97,10 @@ setup-dataset
 
 </details>
 
-## About SLAMcore
+## About Slamcore
 
-[SLAMcore][slamcore] offers commercial-grade visual-inertial
+Slamcore offers commercial-grade visual-inertial
 simultaneous localisation and mapping (SLAM) software for real-time autonomous
-navigation on robots and drones. 
-
+navigation on robots and drones. Find out more at [slamcore.com](slamcore).
 
 [slamcore]: https://www.slamcore.com/

@@ -1,0 +1,23 @@
+
+Files:             tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3
+Bag size:          36.4 MiB
+Storage id:        sqlite3
+Duration:          16.350s
+Start:             May 31 2023 10:55:05.54 (1685519705.54)
+End:               May 31 2023 10:55:21.404 (1685519721.404)
+Messages:          94576
+Topic information: Topic: /irrelevant_gts | Type: geometry_msgs/msg/PoseStamped | Count: 490 | Serialization Format: cdr
+                   Topic: /irrelevant_imu | Type: sensor_msgs/msg/Imu | Count: 817 | Serialization Format: cdr
+                   Topic: /slamcore/accel | Type: sensor_msgs/msg/Imu | Count: 34530 | Serialization Format: cdr
+                   Topic: /slamcore/gyro | Type: sensor_msgs/msg/Imu | Count: 34530 | Serialization Format: cdr
+                   Topic: /slamcore/metadata/distance_travelled | Type: std_msgs/msg/Float64 | Count: 3453 | Serialization Format: cdr
+                   Topic: /slamcore/metadata/num_features | Type: std_msgs/msg/Int64 | Count: 3453 | Serialization Format: cdr
+                   Topic: /slamcore/metadata/slam_event | Type: slamcore_msgs/msg/SLAMEvent | Count: 3 | Serialization Format: cdr
+                   Topic: /slamcore/metadata/tracked_features | Type: std_msgs/msg/Int64 | Count: 6906 | Serialization Format: cdr
+                   Topic: /slamcore/metadata/tracking_status | Type: slamcore_msgs/msg/TrackingStatus | Count: 3454 | Serialization Format: cdr
+                   Topic: /slamcore/odom | Type: nav_msgs/msg/Odometry | Count: 3453 | Serialization Format: cdr
+                   Topic: /slamcore/pose | Type: geometry_msgs/msg/PoseStamped | Count: 3453 | Serialization Format: cdr
+                   Topic: /slamcore/visible_0/camera_info | Type: sensor_msgs/msg/CameraInfo | Count: 7 | Serialization Format: cdr
+                   Topic: /slamcore/visible_0/image_raw | Type: sensor_msgs/msg/Image | Count: 11 | Serialization Format: cdr
+                   Topic: /slamcore/visible_1/camera_info | Type: sensor_msgs/msg/CameraInfo | Count: 8 | Serialization Format: cdr
+                   Topic: /slamcore/visible_1/image_raw | Type: sensor_msgs/msg/Image | Count: 8 | Serialization Format: cdr

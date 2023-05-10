@@ -10,7 +10,7 @@ from slamcore_utils.progress_bar import progress_bar
 
 
 class OpenLORISConverter(DatasetDirConverter):
-    """Convert a dataset from the OpenLORIS format to the SLAMcore Dataset Format."""
+    """Convert a dataset from the OpenLORIS format to the Slamcore Dataset Format."""
 
     def __init__(
         self,

@@ -1,12 +1,66 @@
 import importlib
 import json
+import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, NoReturn, Sequence
 
 import pkg_resources
 
+from slamcore_utils.logging import logger
+
 share_dir = Path(pkg_resources.resource_filename("slamcore_utils", "share"))  # type: ignore
+
+
+def valid_path(s: str) -> Path:
+    p = Path(s)
+    if not p.is_file():
+        raise FileNotFoundError(p)
+
+    return p
+
+
+def format_list(  # pylint: disable=R0913
+    items: Sequence[str],
+    header: str,
+    indent=2,
+    bullet_char="-",
+    header_sep="=",
+    prefix: str = "",
+    suffix: str = "",
+) -> str:
+    """
+    Format and return a string with the corresponding header and all the items each occupying a
+    single line and with the specified indentation.
+    """
+    s = f"{header}: "
+    if not items:
+        s += " None."
+        return s
+
+    s += "\n" + len(s) * header_sep
+    s += "\n\n"
+    s += "\n".join(f'{" " * indent}{bullet_char} {item}' for item in items)
+    s += "\n\n"
+    return f"{prefix}{s}{suffix}"
+
+
+def format_dict(items: Mapping[Any, Any], align_items: bool = True, **kargs) -> str:
+    """
+    Utility for formatting a dictionary - similar to print.pformat.
+
+    Accepts mostly the same arguments as format_list.
+    """
+
+    items_: Sequence[str]
+    if align_items:
+        keys_length = max(len(str(key)) for key in items.keys())
+        format_ = "{0: <%d}" % keys_length  # pylint: disable=C0209
+        items_ = [f"{format_.format(k)}: {v}" for k, v in items.items()]
+    else:
+        items_ = [f"{k}: {v}" for k, v in items.items()]
+
+    return format_list(items=items_, **kargs)  # type: ignore
 
 
 def get_default_config(name: str) -> Mapping[str, Any]:
@@ -56,6 +110,19 @@ def inform_about_extra_deps(
         return wrapper
 
     return wrapper2
+
+
+def inform_about_app_extras(extras: Sequence[str]) -> NoReturn:
+    """Inform the user about *required* package extras and exit."""
+    exec_name = Path(sys.argv[0]).stem
+    extras_str = ",".join(extras)
+    logger.error(
+        "\n\nYou have to install the"
+        f' {extras_str} {"extra" if len(extras) == 1 else "extras"} for {exec_name} to'
+        ' work.\nWith pip, you can do it with something like: "pip3 install'
+        f' slamcore_utils[{extras_str}]"\nExiting.'
+    )
+    sys.exit(1)
 
 
 def xor(*args) -> bool:

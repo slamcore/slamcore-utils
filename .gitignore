@@ -103,9 +103,16 @@ ENV/
 
 # vim
 Session.vim
+.vim/
+.lvimrc
+
+# asdf
+.tool-versions
 
 #############################
 
 /cafe1-1_converted
 /cafe1-1
 /sample_dataset_converted
+/test_rosbag2_with_slamcore_ros2_topics.jsonc
+/output/

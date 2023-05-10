@@ -7,6 +7,7 @@ from slamcore_utils.arg_parser import add_bool_argument, existing_dir
 from slamcore_utils.fs import get_ready_output_path
 from slamcore_utils.logging import logger
 from slamcore_utils.openloris_converter import OpenLORISConverter
+from slamcore_utils.utils import format_dict
 
 
 def main():
@@ -51,13 +52,19 @@ def main():
     )
 
     # announce to user ------------------------------------------------------------------------
-    s = (
-        "\n\nConverting OpenLORIS Dataset to internal SLAMcore format\n"
-        f"\t* Input directory:            {input_dir}\n"
-        f"\t* Output directory:           {output_dir}\n"
-        f"\t* Overwrite output directory: {overwrite_output}\n"
+    announce_items = {
+        "Input directory": input_dir,
+        "Output directory": output_dir,
+        "Overwrite output directory": overwrite_output,
+    }
+    logger.info(
+        format_dict(
+            header="Converting OpenLORIS Dataset to internal SLAMcore format",
+            items=announce_items,
+            prefix="\n\n",
+            suffix="\n",
+        )
     )
-    logger.info(s)
 
     # run conversion --------------------------------------------------------------------------
     converter = OpenLORISConverter(

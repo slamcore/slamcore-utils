@@ -4,6 +4,7 @@ from pathlib import Path
 
 from slamcore_utils.progress_bar import progress_bar
 
+
 class LoggingProfile(Enum):
     """Offers the available logging profiles that the slam_utils apps can run under.
 
@@ -48,6 +49,23 @@ def _setup_logging(name: str, format_: str, level: int):
     ch = TqdmLoggingHandler()
     ch.setFormatter(f)
     logger.addHandler(ch)
+
+
+_verbosity_to_logging_lvls = {
+    0: logging.WARNING,
+    1: logging.INFO,
+    2: logging.DEBUG,
+}
+
+
+def verbotsity_to_logging_lvl(verbosity: int) -> int:
+    """Map CLI-provided verbosity count e.g., -vvv to logging module level."""
+    if verbosity > 2:
+        return logging.DEBUG
+    elif verbosity < 0:
+        raise RuntimeError(f"Invalid verbosity level provided -> {verbosity}")
+    else:
+        return _verbosity_to_logging_lvls[verbosity]
 
 
 def setup_pkg_logging(
@@ -114,5 +132,4 @@ def setup_pkg_logging(
 
 
 _pkg_logger_name = Path(__file__).parent.name
-logger = logging.getLogger(_pkg_logger_name)
-setup_pkg_logging(_pkg_logger_name)
+logger = setup_pkg_logging(_pkg_logger_name)

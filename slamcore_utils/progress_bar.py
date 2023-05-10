@@ -7,11 +7,11 @@ TL;DR: import `progress_bar`. This will resolve to tqdm.tqdm if available or _Pr
 import importlib
 import sys
 import time
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional, Type, cast
 
 
 class _ProgressBar:
-    def __init__(self, iterable: Iterable[Any] = None, total=None, *args, **kargs):
+    def __init__(self, iterable: Optional[Iterable[Any]] = None, total=None, *args, **kargs):
         """
         Poor man's Tqdm.
 
@@ -94,5 +94,7 @@ class _ProgressBar:
 try:
     tqdm = importlib.import_module("tqdm")
     progress_bar = tqdm.tqdm  # type: ignore
-except:
+except:  # noqa
     progress_bar = _ProgressBar
+
+progress_bar = cast(Type[_ProgressBar], progress_bar)

@@ -23,12 +23,14 @@ __license__ = "SLAMcore Confidential"
 
 import csv
 
+from std_msgs.msg import Float64
+
 from slamcore_utils import DatasetSubdirWriter, MeasurementType, setup_pkg_logging
 from slamcore_utils.ros2 import Ros2ConverterPlugin
-from std_msgs.msg import Float64
 
 plugin_name = __file__.replace(".py", "")
 logger = setup_pkg_logging(plugin_name)
+
 
 class DistanceTravelledWriter(DatasetSubdirWriter):
     def __init__(self, directory):

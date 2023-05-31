@@ -21,8 +21,8 @@ __copyright__ = """
 __license__ = "SLAMcore Confidential"
 
 
-from functools import lru_cache
 import re
+from functools import lru_cache
 from typing import Dict, Optional, Sequence
 
 

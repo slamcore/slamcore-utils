@@ -36,7 +36,7 @@ def test_convert_rosbag2_noargs_help():
 
 def test_convert_rosbag2_std_usage():
     """Make sure that a standard conversion works."""
-    dataset = f"{toplevel_test_data}/processed_mh_01/processed_mh_01_0.db3"
+    dataset = f"{toplevel_test_data}/trimmed_rosbag2/trimmed_rosbag2_0.db3"
 
     # the metadata.txt file contains the current date - comparing it against the expected one
     # would always fails
@@ -50,7 +50,7 @@ def test_convert_rosbag2_std_usage():
             test_name="slamcore_convert_rosbag2_std_usage",
             command=(
                 f"{exec_name} -v -b {dataset} -o output -c "
-                f"{toplevel_test_data}/test_rosbag2.json"
+                f"{toplevel_test_data}/trimmed_rosbag2.json"
             ),
             outputs=[
                 Path("output"),

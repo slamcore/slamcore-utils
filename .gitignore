@@ -114,4 +114,5 @@ Session.vim
 /cafe1-1_converted
 /cafe1-1
 /sample_dataset_converted
-test_rosbag2_with_slamcore_ros2_topics.jsonc
+/test_rosbag2_with_slamcore_ros2_topics.jsonc
+/output/

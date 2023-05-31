@@ -422,7 +422,7 @@ def main():
         f"Converter plugins {len(converter_plugins)}": plugins_str,
         "Overwrite output directory": overwrite,
     }
-    logger.info(
+    logger.warning(
         format_dict(
             header="Configuration",
             items=announce_items,

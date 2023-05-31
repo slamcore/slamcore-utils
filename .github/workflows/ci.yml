@@ -58,14 +58,6 @@ jobs:
       - name: Setup Python Poetry
         uses: abatilo/actions-poetry@v2.1.3
 
-      # atm we support python versions > 3.6.8, <= 3.10. This results in having to compile old versions of e.g., numpy,
-      # when using python3.10, from source. This leads to compilation errors. As a workaround let's ignore  the rest of
-      # python versions for now and just use a set of dependencies that works exclusively with 3.10.
-      - name: "Workaround: Compile for python dependencies of 3.10 exclusively"
-        run: |
-          sed -i 's/^python =.*/python="^3.10"/' pyproject.toml
-          rm poetry.lock
-          poetry lock -v
       - name: Install prerequisites
         run: "poetry version && poetry install --extras ros2"
       - name: Run tests

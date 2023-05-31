@@ -120,11 +120,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
-      - name: Setup ROS
-        uses: ros-tooling/setup-ros@v0.6
-        with:
-          use-ros2-testing: false
-          required-ros-distributions: humble
       - name: Publish package to pypi
         uses: JRubics/poetry-publish@v1.9
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')

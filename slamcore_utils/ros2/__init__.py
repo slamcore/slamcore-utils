@@ -26,7 +26,6 @@ try:
         Ros2ConverterPlugin,
         Ros2PluginInitializationFailureError,
     )
-
     from .ros2_utils import (
         get_topic_names_to_message_counts,
         get_topic_names_to_types,

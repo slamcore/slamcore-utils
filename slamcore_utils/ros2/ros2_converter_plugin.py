@@ -46,12 +46,11 @@ class Ros2ConverterPlugin:
         )
 
     def description_short(self) -> str:
-        return (
-            f"Msgs: {self.msg_type:20}, Writer {self.writer_type.__name__}"
-        )
+        return f"Msgs: {self.msg_type:20}, Writer {self.writer_type.__name__}"
 
     def __str__(self):
         return self.description_short()
+
 
 class Ros2PluginInitializationFailureError(BaseException):
     """Exception raised when the plugin at hand could not be initailized correctly."""

@@ -24,6 +24,7 @@ __license__ = "Slamcore Confidential"
 
 
 import sys
+
 from slamcore_utils.logging import logger
 from slamcore_utils.utils import inform_about_app_extras
 
@@ -77,7 +78,7 @@ from slamcore_utils.measurement_type import (
 )
 from slamcore_utils.progress_bar import progress_bar
 from slamcore_utils.ros_utils import add_parser_args
-from slamcore_utils.utils import format_dict, valid_path
+from slamcore_utils.utils import format_dict, format_list, valid_path
 
 """
 Convert rosbag2 to Slamcore Euroc dataset format.
@@ -139,8 +140,10 @@ def load_converter_plugins(plugin_path: Path) -> Sequence[Ros2ConverterPlugin]:
     if "converter_plugins" not in ns_dict:
         raise RuntimeError(
             f"No converter plugins were exported in specified plugin -> {plugin_path}\n",
-            'Make sure that you have initialized a variable named "converter_plugins" '
-            "at the top-level of the said plugin.",
+            (
+                'Make sure that you have initialized a variable named "converter_plugins" '
+                "at the top-level of the said plugin."
+            ),
         )
 
     converter_plugins = ns_dict["converter_plugins"]
@@ -314,12 +317,18 @@ measurement_to_msg_type: Mapping[MeasurementType, str] = {
 }
 
 
+class ArgumentDefaultsHelpAndRawFormatter(
+    argparse.RawDescriptionHelpFormatter, argparse.ArgumentDefaultsHelpFormatter
+):
+    pass
+
+
 # main ----------------------------------------------------------------------------------------
 def main():
     # argument parsing and sanity checks ------------------------------------------------------
     parser = argparse.ArgumentParser(
         description="Convert ROS2 Bags to the Slamcore Dataset Reader format.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=ArgumentDefaultsHelpAndRawFormatter,
     )
     add_parser_args(parser)
 
@@ -332,6 +341,29 @@ def main():
         nargs="*",
         default=[],
     )
+
+    executable = Path(sys.argv[0]).stem
+    usecases = {
+        "Convert the sample rosbag2 to the Slamcore dataset format": (
+            "-c tests/test_data/trimmed_rosbag2.json -b"
+            " tests/tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3 -o output"
+        ),
+        "Convert the sample rosbag2 to the Slamcore dataset format, in verbose mode + ovewrite if exists": (
+            "-c tests/test_data/trimmed_rosbag2.json -b"
+            " tests/tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3 -o output -vv"
+            " --overwrite"
+        ),
+        "Convert the sample rosbag2 to the Slamcore dataset format - use sample conversion plugin": (
+            "-c tests/test_data/executables/slamcore_convert_rosbag2_with_plugin/cfg.jsonc -b"
+            " tests/tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3 -o output"
+            " tests/test_data/executables/slamcore_convert_rosbag2_with_plugin/distance_travelled_conversion_plugin.py"
+        ),
+    }
+    parser.epilog = format_list(
+        header="Usage examples:",
+        items=[f"{k}\n    {executable} {v}\n" for k, v in usecases.items()],
+    )
+
     parser_args = vars(parser.parse_args())
 
     # converter_plugins

@@ -1,0 +1,21 @@
+{
+  "ir0": {
+    "topic": "/slamcore/visible_0/image_raw"
+  },
+  "ir1": {
+    "topic": "/slamcore/visible_1/image_raw"
+  },
+  "imu0": {
+    "topic": "/irrelevant_imu"
+  },
+  "odometry0": {
+    "topic": "/slamcore/odom"
+  },
+  "groundtruth0": {
+    "topic": "/irrelevant_gts"
+  },
+  // stream converted by our dummy plugin
+  "distance_travelled0": {
+    "topic": "/slamcore/metadata/distance_travelled"
+  }
+}

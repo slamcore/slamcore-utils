@@ -78,7 +78,7 @@ only aware of the following messages:
 - `geometry_msgs/PoseStamped`
 
 The user can also specify plugins for conversions of arbitrary messages - see
-the [plugins](#rosbag2-converter-plugins) section for more.
+the [plugins](#rosbag-2-converter-plugins) section for more.
 
 It's also worth noting that `slamcore-convert-rosbag2` does not require the
 existence of the `metadata.yaml` file of the rosbag2 as it can read the metadata
@@ -315,6 +315,11 @@ slamcore-convert-rosbag2 \
 
 This will, in addition to the standard topics conversion also write the
 tracking status data to the `output/tracking_status0/data.csv` file.
+
+You can also have a look at the blackbox test of the plugins at
+[slamcore_convert_rosbag2_with_plugin](tests/test_data/executables/slamcore_convert_rosbag2_with_plugin)
+and at
+[test_ros2_conversions.py](tests/test_ros2_conversions.py)
 
 ## Installation
 

@@ -230,6 +230,14 @@ class UT_Command:
             stdout = stdout.decode("utf-8")
             stderr = stderr.decode("utf-8")
 
+            # assert error code ---------------------------------------------------------------
+            if proc.returncode != expected_return_code:
+                assert False, (
+                    "Got an unexpected error code, "
+                    f"{proc.returncode} instead of the expected {expected_return_code} - "
+                    f"stdout: {stdout} | stderr: {stderr}"
+                )
+
             # assert stdout/err ---------------------------------------------------------------
             if stdout_contains is not None:
                 for stdout_sample in stdout_contains:
@@ -244,14 +252,6 @@ class UT_Command:
                         "Required stderr string not found, "
                         f"[{stderr}] should have contained [{stderr_sample}]"
                     )
-
-            # assert error code ---------------------------------------------------------------
-            if proc.returncode != expected_return_code:
-                assert False, (
-                    "Got an unexpected error code, "
-                    f"{proc.returncode} instead of the expected {expected_return_code}\n\n"
-                    f"stdout:\n\n{stdout}\n\nstderr:\n\n{stderr}"
-                )
 
             # assert all the required files are actually there --------------------------------
             for output in outputs:

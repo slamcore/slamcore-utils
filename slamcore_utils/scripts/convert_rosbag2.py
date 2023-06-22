@@ -26,6 +26,7 @@ __license__ = "Slamcore Confidential"
 import sys
 
 from slamcore_utils.logging import logger
+from slamcore_utils.math import is_symmetric
 from slamcore_utils.utils import inform_about_app_extras
 
 try:
@@ -54,15 +55,18 @@ import argparse
 import csv
 import json
 import operator
+import os
 import queue
 import threading
 from functools import reduce
 from pathlib import Path
 from runpy import run_path
-from typing import Dict, Mapping, Sequence, Tuple, Type
+from typing import Dict, Mapping, Sequence, Tuple, Type, cast
 
 import numpy as np
-from geometry_msgs.msg import PoseStamped
+import pkg_resources
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
+from nav_msgs.msg import Odometry
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 from sensor_msgs.msg import Image as RosImage
@@ -117,12 +121,62 @@ Currently this is specified via a JSON file, for example:
 ```
 """
 
-imgq: "queue.Queue[Tuple[RosImage, Path]]" = queue.Queue()
+# limit the queue size for reading/writing images
+# deserialization + putting to the queue is much faster than consuming elements from the Queue
+# which would lead to unbounded mem usage.
+imgq: "queue.Queue[Tuple[RosImage, Path]]" = queue.Queue(maxsize=2_000)
 mutex = threading.Lock()
 count = 0
 
 
-def load_converter_plugins(plugin_path: Path) -> Sequence[Ros2ConverterPlugin]:
+def get_internal_plugins_dir() -> Path:
+    """
+    Get the path to the internal ROS 2 plugins.
+
+    This depends on whether the user has installed this package and executed the installed
+    script or whether they've directly executed the script via `python3 -m`
+    """
+    if __package__:
+        return (
+            Path(pkg_resources.resource_filename(__package__.split(".")[0], "ros2"))
+            / "ros2_converter_plugins"
+        )
+    else:
+        return Path(__file__).absolute().parent.parent / "ros2" / "ros2_converter_plugins"
+
+
+def load_converter_plugins_from_multiple_files(
+    converter_plugin_paths: Sequence[Path],
+    raise_on_error: bool = True,
+) -> Sequence[Ros2ConverterPlugin]:
+    if converter_plugin_paths:
+        converter_plugins = cast(
+            Sequence[Ros2ConverterPlugin],
+            reduce(
+                operator.concat,
+                (
+                    load_converter_plugins(plugin_path, raise_on_error=raise_on_error)
+                    for plugin_path in converter_plugin_paths
+                ),
+            ),
+        )
+    else:
+        return []
+
+    # Sanity check, each one of converter_plugins var is of the right type
+    for cp in converter_plugins:
+        if not isinstance(cp, Ros2ConverterPlugin):
+            raise RuntimeError(
+                "One of the specified converter plugins is not of type "
+                "Ros2ConverterPlugin, cannot proceed"
+            )
+
+    return converter_plugins
+
+
+def load_converter_plugins(
+    plugin_path: Path, raise_on_error: bool
+) -> Sequence[Ros2ConverterPlugin]:
     """Load all the ROS 2 Converter Plugins specified in the given plugin python module.
 
     In case of errors print the right error messages acconrdingly.
@@ -131,10 +185,12 @@ def load_converter_plugins(plugin_path: Path) -> Sequence[Ros2ConverterPlugin]:
     try:
         ns_dict = run_path(str(plugin_path))
     except BaseException as e:
-        raise RuntimeError(
-            f"Failed to load ROS 2 converter plugin from {plugin_path}\n\nError: {e}\n\n"
-            "Exiting ..."
-        ) from e
+        e_str = f"Failed to load ROS 2 converter plugin from {plugin_path.relative_to(plugin_path.parent)}\n\nError: {e}\n\n"
+        if raise_on_error is True:
+            raise RuntimeError(f"{e_str}Exiting ...") from e
+        else:
+            logger.debug(e_str)
+            return []
 
     # Sanity check, specified converter_plugins var
     if "converter_plugins" not in ns_dict:
@@ -224,7 +280,14 @@ class CameraWriter(DatasetSubdirWriter):
             )
 
         img_path = self.data_dir / f"{ts}.png"
-        imgq.put((msg, img_path))
+
+        img_put_timeout = 5.0
+        try:
+            imgq.put((msg, img_path), block=True, timeout=img_put_timeout)
+        except queue.Full as e:
+            raise RuntimeError(
+                f"Reached timeout of {img_put_timeout}s trying to write an image to the queue."
+                f" Couldn't write image {img_path.name}. This indicates a bug.") from e
 
         self.csv_camera.writerow([ts, f"{ts}.png"])
 
@@ -256,43 +319,83 @@ class PoseStampedWriter(DatasetSubdirWriter):
     def __init__(self, directory):
         super().__init__(directory=directory)
 
-        self.ofs_gt = (self.directory / "data.csv").open("w", newline="")
-        self.csv_gt = csv.writer(self.ofs_gt, delimiter=",")
-        self.csv_gt.writerow(
-            [
-                "#timestamp [ns]",
-                "p_RS_R_x [m]",
-                "p_RS_R_y [m]",
-                "p_RS_R_z [m]",
-                "q_RS_w []",
-                "q_RS_x []",
-                "q_RS_y []",
-                "q_RS_z []",
-            ]
-        )
+    def register_ros_msg_type(self, msg_type: str) -> None:
+        self._is_pose_with_cov = msg_type == "geometry_msgs/msg/PoseWithCovarianceStamped"
+        if msg_type == "geometry_msgs/msg/PoseWithCovarianceStamped":
+            self.write = self.write_pose_with_cov_stamped
+        elif msg_type == "geometry_msgs/msg/PoseStamped":
+            self.write = self.write_pose_stamped
+        elif msg_type == "nav_msgs/msg/Odometry":
+            self.write = self.write_odom
+        else:
+            NotImplementedError(f"Cannot handle message type - {type(msg_type)}")
 
-    def write(self, msg):
+    def prepare_write(self) -> None:
+        self.ofs_data = (self.directory / "data.csv").open("w", newline="")
+        self.csv_writer = csv.writer(self.ofs_data, delimiter=",")
+
+        cols = [
+            "#timestamp [ns]",
+            "p_RS_R_x [m]",
+            "p_RS_R_y [m]",
+            "p_RS_R_z [m]",
+            "q_RS_w []",
+            "q_RS_x []",
+            "q_RS_y []",
+            "q_RS_z []",
+        ]
+
+        if self._is_pose_with_cov is True:
+            cols.extend(
+                # fmt: off
+                ["cov_00", "cov_01", "cov_02", "cov_03", "cov_04", "cov_05",
+                 "cov_10", "cov_11", "cov_12", "cov_13", "cov_14", "cov_15",
+                 "cov_20", "cov_21", "cov_22", "cov_23", "cov_24", "cov_25",
+                 "cov_30", "cov_31", "cov_32", "cov_33", "cov_34", "cov_35",
+                 "cov_40", "cov_41", "cov_42", "cov_43", "cov_44", "cov_45",
+                 "cov_50", "cov_51", "cov_52", "cov_53", "cov_54", "cov_55"]
+                # fmt: on
+            )
+
+        self.csv_writer.writerow(cols)
+
+    def write_pose_stamped(self, msg: PoseStamped):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
         p = msg.pose.position
         q = msg.pose.orientation
-        self.csv_gt.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z])
+        self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z])
 
-    def teardown(self):
-        self.ofs_gt.close()
+    def write_pose_with_cov_stamped(self, msg: PoseWithCovarianceStamped):
+        ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
+        p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        cov = msg.pose.covariance
 
+        cov2d = cov.reshape((6, 6))
 
-class OdometryAsPoseStampedWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        self.pose_stamped_writer = PoseStampedWriter(directory=directory)
+        # checks on the covariance
+        if cov2d[-1, -1] == -1:
+            logger.warning(
+                f"Covariance of current message is invalid (== -1)\nMessage:\n\n{msg}"
+            )
+        if not is_symmetric(cov2d):
+            logger.warning(
+                f"Covariance of current message is not symmetric\nMessage:\n\n{msg}"
+            )
 
-    def write(self, msg):
+        self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z, *cov])
+
+    def write_odom(self, msg: Odometry):
         proxy = PoseStamped()
         proxy.header = msg.header
         proxy.pose = msg.pose.pose
-        self.pose_stamped_writer.write(proxy)
+        self.write_pose_stamped(proxy)
+
+    def write(self, msg) -> None:
+        pass
 
     def teardown(self):
-        self.pose_stamped_writer.teardown()
+        self.ofs_data.close()
 
 
 # MeasurementType <-> Writers -----------------------------------------------------------------
@@ -303,17 +406,25 @@ measurement_type_to_writer_type: Mapping[MeasurementType, Type[DatasetSubdirWrit
     names_to_measurement_types["Odometry"]: OdometryWriter,
     names_to_measurement_types["GroundTruth"]: PoseStampedWriter,
     names_to_measurement_types["SLAMPose"]: PoseStampedWriter,
-    names_to_measurement_types["SmoothPose"]: OdometryAsPoseStampedWriter,
+    names_to_measurement_types["SmoothPose"]: PoseStampedWriter,
 }
 
-measurement_to_msg_type: Mapping[MeasurementType, str] = {
-    names_to_measurement_types["Infrared"]: "sensor_msgs/msg/Image",
-    names_to_measurement_types["Cam"]: "sensor_msgs/msg/Image",
-    names_to_measurement_types["Imu"]: "sensor_msgs/msg/Imu",
-    names_to_measurement_types["Odometry"]: "nav_msgs/msg/Odometry",
-    names_to_measurement_types["GroundTruth"]: "geometry_msgs/msg/PoseStamped",
-    names_to_measurement_types["SLAMPose"]: "geometry_msgs/msg/PoseStamped",
-    names_to_measurement_types["SmoothPose"]: "nav_msgs/msg/Odometry",
+# MeasurementType <-> Allowed Message Types
+
+slamcore_pose_compatible_msgs = [
+    "geometry_msgs/msg/PoseStamped",
+    "geometry_msgs/msg/PoseWithCovarianceStamped",
+    "nav_msgs/msg/Odometry",
+]
+
+measurement_to_msg_type: Mapping[MeasurementType, Sequence[str]] = {
+    names_to_measurement_types["Infrared"]: ["sensor_msgs/msg/Image"],
+    names_to_measurement_types["Cam"]: ["sensor_msgs/msg/Image"],
+    names_to_measurement_types["Imu"]: ["sensor_msgs/msg/Imu"],
+    names_to_measurement_types["Odometry"]: ["nav_msgs/msg/Odometry"],
+    names_to_measurement_types["GroundTruth"]: slamcore_pose_compatible_msgs,
+    names_to_measurement_types["SLAMPose"]: slamcore_pose_compatible_msgs,
+    names_to_measurement_types["SmoothPose"]: ["nav_msgs/msg/Odometry"],
 }
 
 
@@ -366,25 +477,25 @@ def main():
 
     parser_args = vars(parser.parse_args())
 
-    # converter_plugins
-    # aggregate and all of the converter plugins specified
-    converter_plugin_paths: Sequence[Path] = parser_args["converter_plugins"]
-    converter_plugins: Sequence[Ros2ConverterPlugin]
-    if converter_plugin_paths:
-        converter_plugins = reduce(
-            operator.concat,
-            (load_converter_plugins(plugin_path) for plugin_path in converter_plugin_paths),
-        )
-    else:
-        converter_plugins = []
+    # verbosity
+    verbosity = parser_args["verbosity"]
+    logger.setLevel(verbotsity_to_logging_lvl(verbosity))
 
-    # Sanity check, each one of converter_plugins var is of the right type
-    for cp in converter_plugins:
-        if not isinstance(cp, Ros2ConverterPlugin):
-            raise RuntimeError(
-                "One of the specified converter plugins is not of type "
-                "Ros2ConverterPlugin, cannot proceed"
-            )
+    # user-specified plugins
+    converter_plugin_paths: Sequence[Path] = parser_args["converter_plugins"]
+    converter_plugins = load_converter_plugins_from_multiple_files(converter_plugin_paths)
+
+    # internal plugins
+    # internal plugins attempt to load plugins that are shipped with this tool.
+    internal_plugins_dir = get_internal_plugins_dir()
+    internal_converter_plugin_paths = [
+        internal_plugins_dir / internal_plugin
+        for internal_plugin in os.listdir(internal_plugins_dir)
+        if internal_plugin.endswith(".py")
+    ]
+    internal_converter_plugins = load_converter_plugins_from_multiple_files(
+        internal_converter_plugin_paths, raise_on_error=False
+    )
 
     # rosbag file
     bag_path = Path(parser_args["bag"])
@@ -400,10 +511,6 @@ def main():
 
     # overwrite
     overwrite = parser_args["overwrite"]
-
-    # verbosity
-    verbosity = parser_args["verbosity"]
-    logger.setLevel(verbotsity_to_logging_lvl(verbosity))
 
     # jobs
     jobs = parser_args["jobs"]
@@ -463,11 +570,27 @@ def main():
         )
     )
 
+    # load user-specified plugins -------------------------------------------------------------
     for cp in converter_plugins:
         register_measurement_type(cp.measurement_type)
         measurement_type_to_writer_type[cp.measurement_type] = cp.writer_type  # type: ignore
-        measurement_to_msg_type[cp.measurement_type] = cp.msg_type
+        measurement_to_msg_type[cp.measurement_type] = [cp.msg_type]
 
+    # load internal plugins -------------------------------------------------------------------
+    logger.debug(
+        format_list(
+            header="Internal converter plugins",
+            items=[str(p) for p in internal_converter_plugins],
+            prefix="\n\n",
+            suffix="\n",
+        )
+    )
+    for cp in internal_converter_plugins:
+        register_measurement_type(cp.measurement_type)
+        measurement_type_to_writer_type[cp.measurement_type] = cp.writer_type  # type: ignore
+        measurement_to_msg_type[cp.measurement_type] = [cp.msg_type]
+
+    # parse rosbag ----------------------------------------------------------------------------
     rosbag_info, reader = init_rosbag2_reader_handle_exceptions(
         bag_path=bag_path, storage=storage
     )
@@ -497,17 +620,17 @@ def main():
         cfg_topics = get_cfg_topics(key)
 
         # check that the type of the topics in the bag matches that of the JSON ---------------
-        for a_topic in cfg_topics:
-            rosbag_topic = rosbag_topics.get(a_topic)
+        for topic_name in cfg_topics:
+            rosbag_topic = rosbag_topics.get(topic_name)
             if rosbag_topic is None:
                 raise RuntimeError(
-                    f'Cannot find topic "{a_topic}" in the given rosbag.'
+                    f'Cannot find topic "{topic_name}" in the given rosbag.'
                     f"Available topics are: {list(rosbag_topics.keys())}"
                 )
-            rosbag_msg_type: str = rosbag_topics[a_topic]
-            if measurement_to_msg_type[measurement_type] != rosbag_msg_type:
+            rosbag_msg_type: str = rosbag_topics[topic_name]
+            if rosbag_msg_type not in measurement_to_msg_type[measurement_type]:
                 raise RuntimeError(
-                    f"Topic type mismatch for topic {a_topic} - "
+                    f"Topic type mismatch for topic {topic_name} - "
                     f'Expected: "{measurement_to_msg_type[measurement_type]}", '
                     f'Actual rosbag topic -> "{rosbag_msg_type}"'
                 )
@@ -516,6 +639,7 @@ def main():
     # build a map of topic name -> writer
     # during bag playback, only consider topics in our config
     writers: Dict[str, DatasetSubdirWriter] = {}
+    logger.debug("Initializing writers and registering ROS message types ...")
     topics_filter: Sequence[str] = []
     for key in cfg.keys():
         measurement_type = key_to_measurement_types[key]
@@ -529,6 +653,11 @@ def main():
 
         logger.debug(f"Mapping {measurement_type.name:15} - {topic_name} -> {key}...")
         topics_filter.append(topic_name)
+
+        for topic_name, writer in writers.items():
+            rosbag_msg_type: str = rosbag_topics[topic_name]
+            writer.register_ros_msg_type(rosbag_msg_type)
+            writer.prepare_write()
 
         # update total counter based on the number of camera topics
         if measurement_type.is_camera:
@@ -555,7 +684,14 @@ def main():
     while reader.has_next():
         (topic, data, _) = reader.read_next()
         msg_type = get_message(rosbag_topics[topic])
-        msg = deserialize_message(data, msg_type)
+        try:
+            msg = deserialize_message(data, msg_type)
+        except Exception as e:
+            logger.error(
+                f"Could not deserialize {msg_type} message from rosbag2\n\n"
+                f"Original error: {e}"
+            )
+            continue
         writers[topic].write(msg)
     logger.info("Consumed rosbag.")
 

@@ -35,7 +35,7 @@ jobs:
     steps:
       - name: Set Env Variables
         run: |
-          echo "APT_PACKAGES=ros-humble-ros2bag ros-humble-rosbag2 ros-humble-rosbag2-compression ros-humble-rosbag2-compression-zstd ros-humble-rosbag2-cpp ros-humble-rosbag2-interfaces ros-humble-rosbag2-py ros-humble-rosbag2-storage ros-humble-rosbag2-storage-default-plugins ros-humble-rosbag2-storage-mcap ros-humble-rosbag2-transport" >> "$GITHUB_ENV"
+          echo "APT_PACKAGES=ros-humble-ros2bag ros-humble-rosbag2 ros-humble-rosbag2-compression ros-humble-rosbag2-compression-zstd ros-humble-rosbag2-cpp ros-humble-rosbag2-interfaces ros-humble-rosbag2-py ros-humble-rosbag2-storage ros-humble-rosbag2-storage-default-plugins ros-humble-rosbag2-storage-mcap ros-humble-rosbag2-transport ros-humble-gps-msgs" >> "$GITHUB_ENV"
       - uses: actions/checkout@v2
       - name: Setup ROS
         uses: ros-tooling/setup-ros@v0.6
@@ -61,7 +61,7 @@ jobs:
       - name: Install prerequisites
         run: "poetry version && poetry install --extras ros2"
       - name: Run tests
-        run: "source /opt/ros/humble/setup.bash && poetry run pytest -v --doctest-modules"
+        run: "source /opt/ros/humble/setup.bash && poetry run pytest"
 
   check_style:
     runs-on: ubuntu-22.04

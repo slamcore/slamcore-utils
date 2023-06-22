@@ -365,6 +365,7 @@ its dependencies isolated in a virtual environment:
 
 ```sh
 git clone https://github.com/slamcore/slamcore_utils
+cd slamcore_utils
 poetry install
 poetry shell
 

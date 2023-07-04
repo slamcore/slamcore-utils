@@ -30,7 +30,11 @@ class UnknownMeasurementTypeError(BaseException):
     """Exception raised when the measurement type cannot be found."""
 
     def __init__(self, name):
-        super().__init__(f"No MeasurementType found for {name}")
+        digit_stripped_name = re.sub(r"\d+$", "", name)
+        super().__init__(
+            f"No MeasurementType found for {digit_stripped_name}. "
+            f'The following measurement types are defined: {", ".join([m.shortname for m in measurement_types])}'
+        )
 
 
 class MeasurementType:

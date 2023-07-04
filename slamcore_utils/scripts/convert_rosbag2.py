@@ -59,10 +59,11 @@ import threading
 from functools import reduce
 from pathlib import Path
 from runpy import run_path
-from typing import Dict, Mapping, Sequence, Tuple, Type
+from typing import Dict, Mapping, Optional, Sequence, Tuple, Type
 
 import numpy as np
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Pose, PoseStamped, PoseWithCovarianceStamped
+from nav_msgs.msg import Odometry
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 from sensor_msgs.msg import Image as RosImage
@@ -79,6 +80,7 @@ from slamcore_utils.measurement_type import (
 from slamcore_utils.progress_bar import progress_bar
 from slamcore_utils.ros_utils import add_parser_args
 from slamcore_utils.utils import format_dict, format_list, valid_path
+from gps_msgs.msg import GPSFix
 
 """
 Convert rosbag2 to Slamcore Euroc dataset format.
@@ -132,7 +134,7 @@ def load_converter_plugins(plugin_path: Path) -> Sequence[Ros2ConverterPlugin]:
         ns_dict = run_path(str(plugin_path))
     except BaseException as e:
         raise RuntimeError(
-            f"Failed to load ROS 2 converter plugin from {plugin_path}\n\nError: {e}\n\n"
+            f"Failed to load ROS 2 converter plugin from {plugin_path.relative_to(plugin_path.parent)}\n\nError: {e}\n\n"
             "Exiting ..."
         ) from e
 
@@ -253,6 +255,10 @@ class OdometryWriter(DatasetSubdirWriter):
 
 
 class PoseStampedWriter(DatasetSubdirWriter):
+    # constants for the potential conversion of LLA -> XYZ if given GPS data
+    EARTH_RADIUS_M = 6378137.0
+    FLATTENING_RATIO = 1.0 / 298.257224
+
     def __init__(self, directory):
         super().__init__(directory=directory)
 
@@ -271,28 +277,94 @@ class PoseStampedWriter(DatasetSubdirWriter):
             ]
         )
 
-    def write(self, msg):
+        # self._first_pose: Optional[Pose] = None
+
+    def write_pose_stamped(self, msg: PoseStamped):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
         p = msg.pose.position
         q = msg.pose.orientation
         self.csv_gt.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z])
 
-    def teardown(self):
-        self.ofs_gt.close()
+    def write_pose_with_cov_stamped(self, msg: PoseWithCovarianceStamped):
+        proxy_pose = PoseStamped()
+        proxy_pose.header = msg.header
+        proxy_pose.pose = msg.pose.pose
+        self.write_pose_stamped(proxy_pose)
 
-
-class OdometryAsPoseStampedWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        self.pose_stamped_writer = PoseStampedWriter(directory=directory)
-
-    def write(self, msg):
+    def write_odom(self, msg: Odometry):
         proxy = PoseStamped()
         proxy.header = msg.header
         proxy.pose = msg.pose.pose
-        self.pose_stamped_writer.write(proxy)
+        self.write_pose_stamped(proxy)
+
+    def write(self, msg):
+        # TODO Could potentially optimize this by registering the type of message beforehand
+        # and then assigning to the right function - `w.write = w.write_pose_stamped`
+        if isinstance(msg, PoseWithCovarianceStamped):
+            self.write_pose_with_cov_stamped(msg)
+        elif isinstance(msg, PoseStamped):
+            self.write_pose_stamped(msg)
+        elif isinstance(msg, Odometry):
+            self.write_odom(msg)
+        elif isinstance(msg, GPSFix):
+            self.write_gps_fix(msg)
+        else:
+            NotImplementedError(f"Cannot handle message type - {type(msg)}")
+
+    def write_gps_fix(self, msg: GPSFix):
+        """
+        Convert LLA GPS coordinates XYZ coordinates
+
+        Consult the following two resources for the conversion equations:
+
+        https://web.archive.org/web/20181018072749/http://mathforum.org/library/drmath/view/51832.html
+        https://stackoverflow.com/a/8982005/2843583
+        """
+
+        lat_rad = np.deg2rad(msg.latitude)
+        lon_rad = np.deg2rad(msg.longitude)
+        alt_m = msg.altitude
+
+        cos_lat = np.cos(lat_rad)
+        sin_lat = np.sin(lat_rad)
+
+        cos_lon = np.cos(lon_rad)
+        sin_lon = np.sin(lon_rad)
+
+        C = 1.0 / np.sqrt(
+            cos_lat * cos_lat
+            + (1 - self.FLATTENING_RATIO) * (1 - self.FLATTENING_RATIO) * sin_lat * sin_lat
+        )
+        S = (1.0 - self.FLATTENING_RATIO) * (1.0 - self.FLATTENING_RATIO) * C
+
+        pose_out: PoseStamped = PoseStamped()
+        pose_out.header = msg.header
+        pose_out.pose.position.x = (self.EARTH_RADIUS_M * C + alt_m) * cos_lat * cos_lon
+        pose_out.pose.position.y = (self.EARTH_RADIUS_M * C + alt_m) * cos_lat * sin_lon
+        pose_out.pose.position.z = (self.EARTH_RADIUS_M * S + alt_m) * sin_lat
+
+        # # Cache first pose received and always substract from it so that we start from (0,0,0)
+        # if self._first_pose is None:
+        #     x = pose_out.pose.position.x
+        #     y = pose_out.pose.position.y
+        #     z = pose_out.pose.position.z
+        #     logger.warning(
+        #         f"Setting the first GPS received pose from ({x}, {y}, {z}) to to (0,0,0) ..."
+        #     )
+
+        #     self._first_pose = Pose()
+        #     self._first_pose.position.x = pose_out.pose.position.x
+        #     self._first_pose.position.y = pose_out.pose.position.y
+        #     self._first_pose.position.z = pose_out.pose.position.z
+
+        # pose_out.pose.position.x -= self._first_pose.position.x
+        # pose_out.pose.position.y -= self._first_pose.position.y
+        # pose_out.pose.position.z -= self._first_pose.position.z
+
+        self.write_pose_stamped(pose_out)
 
     def teardown(self):
-        self.pose_stamped_writer.teardown()
+        self.ofs_gt.close()
 
 
 # MeasurementType <-> Writers -----------------------------------------------------------------
@@ -303,17 +375,26 @@ measurement_type_to_writer_type: Mapping[MeasurementType, Type[DatasetSubdirWrit
     names_to_measurement_types["Odometry"]: OdometryWriter,
     names_to_measurement_types["GroundTruth"]: PoseStampedWriter,
     names_to_measurement_types["SLAMPose"]: PoseStampedWriter,
-    names_to_measurement_types["SmoothPose"]: OdometryAsPoseStampedWriter,
+    names_to_measurement_types["SmoothPose"]: PoseStampedWriter,
 }
 
-measurement_to_msg_type: Mapping[MeasurementType, str] = {
-    names_to_measurement_types["Infrared"]: "sensor_msgs/msg/Image",
-    names_to_measurement_types["Cam"]: "sensor_msgs/msg/Image",
-    names_to_measurement_types["Imu"]: "sensor_msgs/msg/Imu",
-    names_to_measurement_types["Odometry"]: "nav_msgs/msg/Odometry",
-    names_to_measurement_types["GroundTruth"]: "geometry_msgs/msg/PoseStamped",
-    names_to_measurement_types["SLAMPose"]: "geometry_msgs/msg/PoseStamped",
-    names_to_measurement_types["SmoothPose"]: "nav_msgs/msg/Odometry",
+# MeasurementType <-> Allowed Message Types
+
+slamcore_pose_compatible_msgs = [
+    "geometry_msgs/msg/PoseStamped",
+    "geometry_msgs/msg/PoseWithCovarianceStamped",
+    "gps_msgs/msg/GPSFix",
+    "nav_msgs/msg/Odometry",
+]
+
+measurement_to_msg_type: Mapping[MeasurementType, Sequence[str]] = {
+    names_to_measurement_types["Infrared"]: ["sensor_msgs/msg/Image"],
+    names_to_measurement_types["Cam"]: ["sensor_msgs/msg/Image"],
+    names_to_measurement_types["Imu"]: ["sensor_msgs/msg/Imu"],
+    names_to_measurement_types["Odometry"]: ["nav_msgs/msg/Odometry"],
+    names_to_measurement_types["GroundTruth"]: slamcore_pose_compatible_msgs,
+    names_to_measurement_types["SLAMPose"]: slamcore_pose_compatible_msgs,
+    names_to_measurement_types["SmoothPose"]: ["nav_msgs/msg/Odometry"],
 }
 
 
@@ -505,7 +586,7 @@ def main():
                     f"Available topics are: {list(rosbag_topics.keys())}"
                 )
             rosbag_msg_type: str = rosbag_topics[a_topic]
-            if measurement_to_msg_type[measurement_type] != rosbag_msg_type:
+            if rosbag_msg_type not in measurement_to_msg_type[measurement_type]:
                 raise RuntimeError(
                     f"Topic type mismatch for topic {a_topic} - "
                     f'Expected: "{measurement_to_msg_type[measurement_type]}", '

@@ -59,10 +59,10 @@ import threading
 from functools import reduce
 from pathlib import Path
 from runpy import run_path
-from typing import Dict, Mapping, Optional, Sequence, Tuple, Type
+from typing import Dict, Mapping, Sequence, Tuple, Type
 
 import numpy as np
-from geometry_msgs.msg import Pose, PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
@@ -262,34 +262,62 @@ class PoseStampedWriter(DatasetSubdirWriter):
     def __init__(self, directory):
         super().__init__(directory=directory)
 
-        self.ofs_gt = (self.directory / "data.csv").open("w", newline="")
-        self.csv_gt = csv.writer(self.ofs_gt, delimiter=",")
-        self.csv_gt.writerow(
-            [
-                "#timestamp [ns]",
-                "p_RS_R_x [m]",
-                "p_RS_R_y [m]",
-                "p_RS_R_z [m]",
-                "q_RS_w []",
-                "q_RS_x []",
-                "q_RS_y []",
-                "q_RS_z []",
-            ]
-        )
+    def register_ros_msg_type(self, msg_type: str) -> None:
+        self._is_pose_with_cov = msg_type == "geometry_msgs/msg/PoseWithCovarianceStamped"
+        if msg_type == "geometry_msgs/msg/PoseWithCovarianceStamped":
+            self.write = self.write_pose_with_cov_stamped
+        elif msg_type == "geometry_msgs/msg/PoseStamped":
+            self.write = self.write_pose_stamped
+        elif msg_type == "nav_msgs/msg/Odometry":
+            self.write = self.write_odom
+        elif msg_type == "gps_msgs/msg/GPSFix":
+            self.write = self.write_gps_fix
+        else:
+            NotImplementedError(f"Cannot handle message type - {type(msg_type)}")
 
-        # self._first_pose: Optional[Pose] = None
+
+    def prepare_write(self) -> None:
+        self.ofs_data = (self.directory / "data.csv").open("w", newline="")
+        self.csv_writer = csv.writer(self.ofs_data, delimiter=",")
+
+        cols = [
+            "#timestamp [ns]",
+            "p_RS_R_x [m]",
+            "p_RS_R_y [m]",
+            "p_RS_R_z [m]",
+            "q_RS_w []",
+            "q_RS_x []",
+            "q_RS_y []",
+            "q_RS_z []",
+        ]
+
+        if self._is_pose_with_cov is True:
+            cols.extend(
+                # fmt: off
+                ["cov_00", "cov_01", "cov_02", "cov_03", "cov_04", "cov_05", "cov_10",
+                 "cov_11", "cov_12", "cov_13", "cov_14", "cov_15", "cov_20", "cov_21",
+                 "cov_22", "cov_23", "cov_24", "cov_25", "cov_30", "cov_31", "cov_32",
+                 "cov_33", "cov_34", "cov_35", "cov_40", "cov_41", "cov_42", "cov_43",
+                 "cov_44", "cov_45", "cov_50", "cov_51", "cov_52", "cov_53", "cov_54",
+                 "cov_55"]
+                # fmt on
+            )
+
+        self.csv_writer.writerow(cols)
 
     def write_pose_stamped(self, msg: PoseStamped):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
         p = msg.pose.position
         q = msg.pose.orientation
-        self.csv_gt.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z])
+        self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z])
 
     def write_pose_with_cov_stamped(self, msg: PoseWithCovarianceStamped):
-        proxy_pose = PoseStamped()
-        proxy_pose.header = msg.header
-        proxy_pose.pose = msg.pose.pose
-        self.write_pose_stamped(proxy_pose)
+        ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
+        p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        cov = msg.pose.covariance
+        self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z, *cov])
+
 
     def write_odom(self, msg: Odometry):
         proxy = PoseStamped()
@@ -297,19 +325,8 @@ class PoseStampedWriter(DatasetSubdirWriter):
         proxy.pose = msg.pose.pose
         self.write_pose_stamped(proxy)
 
-    def write(self, msg):
-        # TODO Could potentially optimize this by registering the type of message beforehand
-        # and then assigning to the right function - `w.write = w.write_pose_stamped`
-        if isinstance(msg, PoseWithCovarianceStamped):
-            self.write_pose_with_cov_stamped(msg)
-        elif isinstance(msg, PoseStamped):
-            self.write_pose_stamped(msg)
-        elif isinstance(msg, Odometry):
-            self.write_odom(msg)
-        elif isinstance(msg, GPSFix):
-            self.write_gps_fix(msg)
-        else:
-            NotImplementedError(f"Cannot handle message type - {type(msg)}")
+    def write(self, msg) -> None:
+        pass
 
     def write_gps_fix(self, msg: GPSFix):
         """
@@ -364,7 +381,7 @@ class PoseStampedWriter(DatasetSubdirWriter):
         self.write_pose_stamped(pose_out)
 
     def teardown(self):
-        self.ofs_gt.close()
+        self.ofs_data.close()
 
 
 # MeasurementType <-> Writers -----------------------------------------------------------------
@@ -547,7 +564,7 @@ def main():
     for cp in converter_plugins:
         register_measurement_type(cp.measurement_type)
         measurement_type_to_writer_type[cp.measurement_type] = cp.writer_type  # type: ignore
-        measurement_to_msg_type[cp.measurement_type] = cp.msg_type
+        measurement_to_msg_type[cp.measurement_type] = [cp.msg_type]
 
     rosbag_info, reader = init_rosbag2_reader_handle_exceptions(
         bag_path=bag_path, storage=storage
@@ -578,17 +595,17 @@ def main():
         cfg_topics = get_cfg_topics(key)
 
         # check that the type of the topics in the bag matches that of the JSON ---------------
-        for a_topic in cfg_topics:
-            rosbag_topic = rosbag_topics.get(a_topic)
+        for topic_name in cfg_topics:
+            rosbag_topic = rosbag_topics.get(topic_name)
             if rosbag_topic is None:
                 raise RuntimeError(
-                    f'Cannot find topic "{a_topic}" in the given rosbag.'
+                    f'Cannot find topic "{topic_name}" in the given rosbag.'
                     f"Available topics are: {list(rosbag_topics.keys())}"
                 )
-            rosbag_msg_type: str = rosbag_topics[a_topic]
+            rosbag_msg_type: str = rosbag_topics[topic_name]
             if rosbag_msg_type not in measurement_to_msg_type[measurement_type]:
                 raise RuntimeError(
-                    f"Topic type mismatch for topic {a_topic} - "
+                    f"Topic type mismatch for topic {topic_name} - "
                     f'Expected: "{measurement_to_msg_type[measurement_type]}", '
                     f'Actual rosbag topic -> "{rosbag_msg_type}"'
                 )
@@ -597,6 +614,7 @@ def main():
     # build a map of topic name -> writer
     # during bag playback, only consider topics in our config
     writers: Dict[str, DatasetSubdirWriter] = {}
+    logger.debug("Initializing writers and registering ROS message types ...")
     topics_filter: Sequence[str] = []
     for key in cfg.keys():
         measurement_type = key_to_measurement_types[key]
@@ -610,6 +628,12 @@ def main():
 
         logger.debug(f"Mapping {measurement_type.name:15} - {topic_name} -> {key}...")
         topics_filter.append(topic_name)
+
+        for topic_name, writer in writers.items():
+            rosbag_msg_type: str = rosbag_topics[topic_name]
+            writer.register_ros_msg_type(rosbag_msg_type)
+            writer.prepare_write()
+
 
         # update total counter based on the number of camera topics
         if measurement_type.is_camera:
@@ -636,7 +660,14 @@ def main():
     while reader.has_next():
         (topic, data, _) = reader.read_next()
         msg_type = get_message(rosbag_topics[topic])
-        msg = deserialize_message(data, msg_type)
+        try:
+            msg = deserialize_message(data, msg_type)
+        except Exception as e:
+            logger.error(
+                f"Could not deserialize {msg_type} message from rosbag2\n\n"
+                f"Original error: {e}"
+            )
+            continue
         writers[topic].write(msg)
     logger.info("Consumed rosbag.")
 

@@ -23,6 +23,7 @@ __license__ = "SLAMcore Confidential"
 
 import abc
 from pathlib import Path
+from typing import Type
 
 
 class DatasetSubdirWriter(abc.ABC):
@@ -35,6 +36,18 @@ class DatasetSubdirWriter(abc.ABC):
     def __init__(self, directory: Path):
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=False)
+
+    def register_ros_msg_type(self, msg_type: Type) -> None:
+        """
+        In case the writer supports multiple ROS 2 msg types and changes its behavior based on
+        the particular ROS 2 msg type being passed, the derived class can implement this
+        function to become aware of the concrete message type that it will receive.
+        """
+
+    def prepare_write(self) -> None:
+        """
+        Initialization actions for the writer at hand.
+        """
 
     @abc.abstractmethod
     def write(self, msg):

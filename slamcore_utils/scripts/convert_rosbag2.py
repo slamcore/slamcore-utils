@@ -54,14 +54,16 @@ import argparse
 import csv
 import json
 import operator
+import os
 import queue
 import threading
 from functools import reduce
 from pathlib import Path
 from runpy import run_path
-from typing import Dict, Mapping, Sequence, Tuple, Type
+from typing import Dict, Mapping, Sequence, Tuple, Type, cast
 
 import numpy as np
+import importlib.resources
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from rclpy.serialization import deserialize_message
@@ -123,7 +125,38 @@ mutex = threading.Lock()
 count = 0
 
 
-def load_converter_plugins(plugin_path: Path) -> Sequence[Ros2ConverterPlugin]:
+def load_converter_plugins_from_multiple_files(
+    converter_plugin_paths: Sequence[Path],
+    raise_on_error: bool = True,
+) -> Sequence[Ros2ConverterPlugin]:
+    if converter_plugin_paths:
+        converter_plugins = cast(
+            Sequence[Ros2ConverterPlugin],
+            reduce(
+                operator.concat,
+                (
+                    load_converter_plugins(plugin_path, raise_on_error=raise_on_error)
+                    for plugin_path in converter_plugin_paths
+                ),
+            ),
+        )
+    else:
+        return []
+
+    # Sanity check, each one of converter_plugins var is of the right type
+    for cp in converter_plugins:
+        if not isinstance(cp, Ros2ConverterPlugin):
+            raise RuntimeError(
+                "One of the specified converter plugins is not of type "
+                "Ros2ConverterPlugin, cannot proceed"
+            )
+
+    return converter_plugins
+
+
+def load_converter_plugins(
+    plugin_path: Path, raise_on_error: bool
+) -> Sequence[Ros2ConverterPlugin]:
     """Load all the ROS 2 Converter Plugins specified in the given plugin python module.
 
     In case of errors print the right error messages acconrdingly.
@@ -132,10 +165,12 @@ def load_converter_plugins(plugin_path: Path) -> Sequence[Ros2ConverterPlugin]:
     try:
         ns_dict = run_path(str(plugin_path))
     except BaseException as e:
-        raise RuntimeError(
-            f"Failed to load ROS 2 converter plugin from {plugin_path.relative_to(plugin_path.parent)}\n\nError: {e}\n\n"
-            "Exiting ..."
-        ) from e
+        e_str = f"Failed to load ROS 2 converter plugin from {plugin_path.relative_to(plugin_path.parent)}\n\nError: {e}\n\n"
+        if raise_on_error is True:
+            raise RuntimeError(f"{e_str}Exiting ...") from e
+        else:
+            logger.debug(e_str)
+            return []
 
     # Sanity check, specified converter_plugins var
     if "converter_plugins" not in ns_dict:
@@ -403,25 +438,29 @@ def main():
 
     parser_args = vars(parser.parse_args())
 
-    # converter_plugins
-    # aggregate and all of the converter plugins specified
-    converter_plugin_paths: Sequence[Path] = parser_args["converter_plugins"]
-    converter_plugins: Sequence[Ros2ConverterPlugin]
-    if converter_plugin_paths:
-        converter_plugins = reduce(
-            operator.concat,
-            (load_converter_plugins(plugin_path) for plugin_path in converter_plugin_paths),
-        )
-    else:
-        converter_plugins = []
+    # verbosity
+    verbosity = parser_args["verbosity"]
+    logger.setLevel(verbotsity_to_logging_lvl(verbosity))
 
-    # Sanity check, each one of converter_plugins var is of the right type
-    for cp in converter_plugins:
-        if not isinstance(cp, Ros2ConverterPlugin):
-            raise RuntimeError(
-                "One of the specified converter plugins is not of type "
-                "Ros2ConverterPlugin, cannot proceed"
-            )
+    # user-specified plugins
+    converter_plugin_paths: Sequence[Path] = parser_args["converter_plugins"]
+    converter_plugins = load_converter_plugins_from_multiple_files(converter_plugin_paths)
+
+    # internal plugins
+    # internal plugins attempt to load plugins that are shipped with this tool.
+    internal_plugins_dir = (
+        cast(Path, importlib.resources.path(__package__.split(".")[0], "ros2"))
+        / "ros2_converter_plugins"
+    )
+
+    internal_converter_plugin_paths = [
+        internal_plugins_dir / internal_plugin
+        for internal_plugin in os.listdir(internal_plugins_dir)
+        if internal_plugin.endswith(".py")
+    ]
+    internal_converter_plugins = load_converter_plugins_from_multiple_files(
+        internal_converter_plugin_paths, raise_on_error=False
+    )
 
     # rosbag file
     bag_path = Path(parser_args["bag"])
@@ -437,10 +476,6 @@ def main():
 
     # overwrite
     overwrite = parser_args["overwrite"]
-
-    # verbosity
-    verbosity = parser_args["verbosity"]
-    logger.setLevel(verbotsity_to_logging_lvl(verbosity))
 
     # jobs
     jobs = parser_args["jobs"]
@@ -500,11 +535,27 @@ def main():
         )
     )
 
+    # load user-specified plugins -------------------------------------------------------------
     for cp in converter_plugins:
         register_measurement_type(cp.measurement_type)
         measurement_type_to_writer_type[cp.measurement_type] = cp.writer_type  # type: ignore
         measurement_to_msg_type[cp.measurement_type] = [cp.msg_type]
 
+    # load internal plugins -------------------------------------------------------------------
+    logger.debug(
+        format_list(
+            header="Internal converter plugins",
+            items=[str(p) for p in internal_converter_plugins],
+            prefix="\n\n",
+            suffix="\n",
+        )
+    )
+    for cp in internal_converter_plugins:
+        register_measurement_type(cp.measurement_type)
+        measurement_type_to_writer_type[cp.measurement_type] = cp.writer_type  # type: ignore
+        measurement_to_msg_type[cp.measurement_type] = [cp.msg_type]
+
+    # parse rosbag ----------------------------------------------------------------------------
     rosbag_info, reader = init_rosbag2_reader_handle_exceptions(
         bag_path=bag_path, storage=storage
     )

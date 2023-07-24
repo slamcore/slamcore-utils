@@ -88,6 +88,10 @@ pythonPlatform = "Linux"
 line-length = 95
 target-version = "py38"
 
+[tool.pytest.ini_options]
+addopts = ["-v", "--doctest-modules"]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+

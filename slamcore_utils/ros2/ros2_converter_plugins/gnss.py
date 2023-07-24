@@ -46,6 +46,8 @@ except ModuleNotFoundError:
 
 
 class GPSAsPoseStampedWriter(DatasetSubdirWriter):
+    """Convert and save GPSFix messages in the Slamcore dataset format."""
+
     # constants for the potential conversion of LLA -> XYZ if given GPS data
     EARTH_RADIUS_M = 6378137.0
     FLATTENING_RATIO = 1.0 / 298.257224
@@ -70,13 +72,11 @@ class GPSAsPoseStampedWriter(DatasetSubdirWriter):
 
         self.csv_writer.writerow(cols)
 
-
     def write_pose_stamped(self, msg: PoseStamped):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
         p = msg.pose.position
         q = msg.pose.orientation
         self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z])
-
 
     def write(self, msg: GPSFix) -> None:
         """

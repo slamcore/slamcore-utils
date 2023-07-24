@@ -72,10 +72,12 @@ format, it will go through the rosbag2 and convert the required streams to
 generate the Slamcore dataset. By default, the `slamcore-convert-rosbag2` is
 only aware of the following messages:
 
-- `sensor_msgs/Imu`
-- `sensor_msgs/Camera`
-- `nav_msgs/Odometry`
 - `geometry_msgs/PoseStamped`
+- `geometry_msgs/PoseWithCovarianceStamped`
+- `gps_msgs/GPSFix`
+- `nav_msgs/Odometry`
+- `sensor_msgs/Camera`
+- `sensor_msgs/Imu`
 
 The user can also specify plugins for conversions of arbitrary messages - see
 the [plugins](#rosbag-2-converter-plugins) section for more.

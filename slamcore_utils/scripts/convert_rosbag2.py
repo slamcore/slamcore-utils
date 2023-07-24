@@ -80,7 +80,6 @@ from slamcore_utils.measurement_type import (
 from slamcore_utils.progress_bar import progress_bar
 from slamcore_utils.ros_utils import add_parser_args
 from slamcore_utils.utils import format_dict, format_list, valid_path
-from gps_msgs.msg import GPSFix
 
 """
 Convert rosbag2 to Slamcore Euroc dataset format.
@@ -255,10 +254,6 @@ class OdometryWriter(DatasetSubdirWriter):
 
 
 class PoseStampedWriter(DatasetSubdirWriter):
-    # constants for the potential conversion of LLA -> XYZ if given GPS data
-    EARTH_RADIUS_M = 6378137.0
-    FLATTENING_RATIO = 1.0 / 298.257224
-
     def __init__(self, directory):
         super().__init__(directory=directory)
 
@@ -270,11 +265,8 @@ class PoseStampedWriter(DatasetSubdirWriter):
             self.write = self.write_pose_stamped
         elif msg_type == "nav_msgs/msg/Odometry":
             self.write = self.write_odom
-        elif msg_type == "gps_msgs/msg/GPSFix":
-            self.write = self.write_gps_fix
         else:
             NotImplementedError(f"Cannot handle message type - {type(msg_type)}")
-
 
     def prepare_write(self) -> None:
         self.ofs_data = (self.directory / "data.csv").open("w", newline="")
@@ -328,58 +320,6 @@ class PoseStampedWriter(DatasetSubdirWriter):
     def write(self, msg) -> None:
         pass
 
-    def write_gps_fix(self, msg: GPSFix):
-        """
-        Convert LLA GPS coordinates XYZ coordinates
-
-        Consult the following two resources for the conversion equations:
-
-        https://web.archive.org/web/20181018072749/http://mathforum.org/library/drmath/view/51832.html
-        https://stackoverflow.com/a/8982005/2843583
-        """
-
-        lat_rad = np.deg2rad(msg.latitude)
-        lon_rad = np.deg2rad(msg.longitude)
-        alt_m = msg.altitude
-
-        cos_lat = np.cos(lat_rad)
-        sin_lat = np.sin(lat_rad)
-
-        cos_lon = np.cos(lon_rad)
-        sin_lon = np.sin(lon_rad)
-
-        C = 1.0 / np.sqrt(
-            cos_lat * cos_lat
-            + (1 - self.FLATTENING_RATIO) * (1 - self.FLATTENING_RATIO) * sin_lat * sin_lat
-        )
-        S = (1.0 - self.FLATTENING_RATIO) * (1.0 - self.FLATTENING_RATIO) * C
-
-        pose_out: PoseStamped = PoseStamped()
-        pose_out.header = msg.header
-        pose_out.pose.position.x = (self.EARTH_RADIUS_M * C + alt_m) * cos_lat * cos_lon
-        pose_out.pose.position.y = (self.EARTH_RADIUS_M * C + alt_m) * cos_lat * sin_lon
-        pose_out.pose.position.z = (self.EARTH_RADIUS_M * S + alt_m) * sin_lat
-
-        # # Cache first pose received and always substract from it so that we start from (0,0,0)
-        # if self._first_pose is None:
-        #     x = pose_out.pose.position.x
-        #     y = pose_out.pose.position.y
-        #     z = pose_out.pose.position.z
-        #     logger.warning(
-        #         f"Setting the first GPS received pose from ({x}, {y}, {z}) to to (0,0,0) ..."
-        #     )
-
-        #     self._first_pose = Pose()
-        #     self._first_pose.position.x = pose_out.pose.position.x
-        #     self._first_pose.position.y = pose_out.pose.position.y
-        #     self._first_pose.position.z = pose_out.pose.position.z
-
-        # pose_out.pose.position.x -= self._first_pose.position.x
-        # pose_out.pose.position.y -= self._first_pose.position.y
-        # pose_out.pose.position.z -= self._first_pose.position.z
-
-        self.write_pose_stamped(pose_out)
-
     def teardown(self):
         self.ofs_data.close()
 
@@ -400,7 +340,6 @@ measurement_type_to_writer_type: Mapping[MeasurementType, Type[DatasetSubdirWrit
 slamcore_pose_compatible_msgs = [
     "geometry_msgs/msg/PoseStamped",
     "geometry_msgs/msg/PoseWithCovarianceStamped",
-    "gps_msgs/msg/GPSFix",
     "nav_msgs/msg/Odometry",
 ]
 
@@ -633,7 +572,6 @@ def main():
             rosbag_msg_type: str = rosbag_topics[topic_name]
             writer.register_ros_msg_type(rosbag_msg_type)
             writer.prepare_write()
-
 
         # update total counter based on the number of camera topics
         if measurement_type.is_camera:

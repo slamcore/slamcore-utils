@@ -26,6 +26,7 @@ __license__ = "Slamcore Confidential"
 import sys
 
 from slamcore_utils.logging import logger
+from slamcore_utils.math import is_symmetric
 from slamcore_utils.utils import inform_about_app_extras
 
 try:
@@ -321,13 +322,13 @@ class PoseStampedWriter(DatasetSubdirWriter):
         if self._is_pose_with_cov is True:
             cols.extend(
                 # fmt: off
-                ["cov_00", "cov_01", "cov_02", "cov_03", "cov_04", "cov_05", "cov_10",
-                 "cov_11", "cov_12", "cov_13", "cov_14", "cov_15", "cov_20", "cov_21",
-                 "cov_22", "cov_23", "cov_24", "cov_25", "cov_30", "cov_31", "cov_32",
-                 "cov_33", "cov_34", "cov_35", "cov_40", "cov_41", "cov_42", "cov_43",
-                 "cov_44", "cov_45", "cov_50", "cov_51", "cov_52", "cov_53", "cov_54",
-                 "cov_55"]
-                # fmt on
+                ["cov_00", "cov_01", "cov_02", "cov_03", "cov_04", "cov_05",
+                 "cov_10", "cov_11", "cov_12", "cov_13", "cov_14", "cov_15",
+                 "cov_20", "cov_21", "cov_22", "cov_23", "cov_24", "cov_25",
+                 "cov_30", "cov_31", "cov_32", "cov_33", "cov_34", "cov_35",
+                 "cov_40", "cov_41", "cov_42", "cov_43", "cov_44", "cov_45",
+                 "cov_50", "cov_51", "cov_52", "cov_53", "cov_54", "cov_55"]
+                # fmt: on
             )
 
         self.csv_writer.writerow(cols)
@@ -343,8 +344,20 @@ class PoseStampedWriter(DatasetSubdirWriter):
         p = msg.pose.pose.position
         q = msg.pose.pose.orientation
         cov = msg.pose.covariance
-        self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z, *cov])
 
+        cov2d = cov.reshape((6, 6))
+
+        # checks on the covariance
+        if cov2d[-1, -1] == -1:
+            logger.warning(
+                f"Covariance of current message is invalid (== -1)\nMessage:\n\n{msg}"
+            )
+        if not is_symmetric(cov2d):
+            logger.warning(
+                f"Covariance of current message is not symmetric\nMessage:\n\n{msg}"
+            )
+
+        self.csv_writer.writerow([ts, p.x, p.y, p.z, q.w, q.x, q.y, q.z, *cov])
 
     def write_odom(self, msg: Odometry):
         proxy = PoseStamped()

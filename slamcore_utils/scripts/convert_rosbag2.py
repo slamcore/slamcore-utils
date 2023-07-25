@@ -121,7 +121,10 @@ Currently this is specified via a JSON file, for example:
 ```
 """
 
-imgq: "queue.Queue[Tuple[RosImage, Path]]" = queue.Queue()
+# limit the queue size for reading/writing images
+# deserialization + putting to the queue is much faster than consuming elements from the Queue
+# which would lead to unbounded mem usage.
+imgq: "queue.Queue[Tuple[RosImage, Path]]" = queue.Queue(maxsize=2_000)
 mutex = threading.Lock()
 count = 0
 
@@ -277,7 +280,7 @@ class CameraWriter(DatasetSubdirWriter):
             )
 
         img_path = self.data_dir / f"{ts}.png"
-        imgq.put((msg, img_path))
+        imgq.put((msg, img_path), block=True)
 
         self.csv_camera.writerow([ts, f"{ts}.png"])
 

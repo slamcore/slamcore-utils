@@ -64,7 +64,7 @@ from runpy import run_path
 from typing import Dict, Mapping, Sequence, Tuple, Type, cast
 
 import numpy as np
-import importlib.resources
+import pkg_resources
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from rclpy.serialization import deserialize_message
@@ -124,6 +124,22 @@ Currently this is specified via a JSON file, for example:
 imgq: "queue.Queue[Tuple[RosImage, Path]]" = queue.Queue()
 mutex = threading.Lock()
 count = 0
+
+
+def get_internal_plugins_dir() -> Path:
+    """
+    Get the path to the internal ROS 2 plugins.
+
+    This depends on whether the user has installed this package and executed the installed
+    script or whether they've directly executed the script via `python3 -m`
+    """
+    if __package__:
+        return (
+            Path(pkg_resources.resource_filename(__package__.split(".")[0], "ros2"))
+            / "ros2_converter_plugins"
+        )
+    else:
+        return Path(__file__).absolute().parent.parent / "ros2" / "ros2_converter_plugins"
 
 
 def load_converter_plugins_from_multiple_files(
@@ -461,11 +477,7 @@ def main():
 
     # internal plugins
     # internal plugins attempt to load plugins that are shipped with this tool.
-    internal_plugins_dir = (
-        cast(Path, importlib.resources.path(__package__.split(".")[0], "ros2"))
-        / "ros2_converter_plugins"
-    )
-
+    internal_plugins_dir = get_internal_plugins_dir()
     internal_converter_plugin_paths = [
         internal_plugins_dir / internal_plugin
         for internal_plugin in os.listdir(internal_plugins_dir)

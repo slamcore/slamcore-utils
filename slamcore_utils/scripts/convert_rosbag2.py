@@ -280,7 +280,14 @@ class CameraWriter(DatasetSubdirWriter):
             )
 
         img_path = self.data_dir / f"{ts}.png"
-        imgq.put((msg, img_path), block=True)
+
+        img_put_timeout = 5.0
+        try:
+            imgq.put((msg, img_path), block=True, timeout=img_put_timeout)
+        except queue.Full as e:
+            raise RuntimeError(
+                f"Reached timeout of {img_put_timeout}s trying to write an image to the queue."
+                f" Couldn't write image {img_path.name}. This indicates a bug.") from e
 
         self.csv_camera.writerow([ts, f"{ts}.png"])
 

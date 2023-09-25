@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slamcore_utils"
-version = "0.1.6"
+version = "0.1.7"
 description = "SLAMcore SLAM Utilities"
 authors = ["Nikos Koukis <nikolaos@slamcore.com>"]
 license = "BSD License"
@@ -19,7 +19,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.8,<3.11"
+python = ">=3.6.8,<3.12"
 questionary = "^1.10.0"
 prompt-toolkit = ">3.0,<=3.0.23"
 numpy = [ { version = "^1.19.5", python = "<3.9" }, { version = "*", python = ">=3.9" } ]

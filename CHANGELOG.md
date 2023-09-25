@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## 0.1.7 (2023-09-25)
+
+### Added
+
+- slamcore-convert-rosbag2:
+
+  - Introduce internal plugins. Use an internal plugin to convert GNSS data
+  - Enable converting `PoseWithCovarianceStamped` messages
+
+### Fixed
+
+- slamcore-convert-rosbag2:
+
+  - Fix issue with unbounded memory usage during conversion of bulky rosbag
+    datasets
+
+### Changed
+
+- slamcore-convert-rosbag2:
+
+  - Also allow running with or without the package properly installed via `pip` or
+    `poetry`
+  - Allow writers to handle multiple types of ROS 2 messages
+
 ## 0.1.6 (2022-05-31)
 
 ### Added

@@ -15,4 +15,4 @@ __all__ = [
 ]
 
 # TODO Find a way to use this version in pyproject.toml
-__version__ = "0.1.6"
+__version__ = "0.1.7"

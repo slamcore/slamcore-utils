@@ -39,8 +39,10 @@ except ModuleNotFoundError:
     raise Ros2PluginInitializationFailureError(
         plugin_name=plugin_name,
         msg=(
-            "Could not import the gps_msgs module. On Ubuntu this is shipped with the ros-<ros-version>-gps-msgs package"
-            "Please make sure that the latter is installed (or that the gps-msgs are installed via source and retry"
+            "Could not import the gps_msgs module. "
+            "On Ubuntu this is shipped with the ros-<ros-version>-gps-msgs package."
+            "Please make sure that the latter is installed (or that the gps-msgs are installed"
+            " via source) and retry"
         ),
     )
 
@@ -72,7 +74,7 @@ class GPSAsPoseStampedWriter(DatasetSubdirWriter):
 
         self.csv_writer.writerow(cols)
 
-    def write_pose_stamped(self, msg: PoseStamped):
+    def _write_pose_stamped(self, msg: PoseStamped):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
         p = msg.pose.position
         q = msg.pose.orientation
@@ -128,13 +130,13 @@ class GPSAsPoseStampedWriter(DatasetSubdirWriter):
         # pose_out.pose.position.y -= self._first_pose.position.y
         # pose_out.pose.position.z -= self._first_pose.position.z
 
-        self.write_pose_stamped(pose_out)
+        self._write_pose_stamped(pose_out)
 
     def teardown(self):
         self.ofs_data.close()
 
 
-# define plugins for converter to use ------------------------------------------
+# define plugins for converter to use ---------------------------------------------------------
 # mandatory key in module namespace
 converter_plugins = [
     Ros2ConverterPlugin(

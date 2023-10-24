@@ -625,7 +625,7 @@ def main():
             if rosbag_topic is None:
                 raise RuntimeError(
                     f'Cannot find topic "{topic_name}" in the given rosbag.'
-                    f"Available topics are: {list(rosbag_topics.keys())}"
+                    f" Available topics are: {list(rosbag_topics.keys())}"
                 )
             rosbag_msg_type: str = rosbag_topics[topic_name]
             if rosbag_msg_type not in measurement_to_msg_type[measurement_type]:

@@ -33,7 +33,8 @@ class UnknownMeasurementTypeError(BaseException):
         digit_stripped_name = re.sub(r"\d+$", "", name)
         super().__init__(
             f"No MeasurementType found for {digit_stripped_name}. "
-            f'The following measurement types are defined: {", ".join([m.shortname for m in measurement_types])}'
+            "The following measurement types are defined: "
+            f'{", ".join([m.shortname for m in measurement_types])}'
         )
 
 
@@ -101,8 +102,8 @@ class MeasurementType:
 
         try:
             return _vals_to_measurement_types[groups[0]]
-        except KeyError:
-            raise UnknownMeasurementTypeError(s)
+        except KeyError as e:
+            raise UnknownMeasurementTypeError(s) from e
 
 
 measurement_types: Sequence[MeasurementType] = []
@@ -125,10 +126,10 @@ def get_measurement_type(key, val) -> MeasurementType:
         # measurement type wasn't explicitly specified, try deducing from key.
         try:
             measurement_type = MeasurementType.from_str(key)
-        except UnknownMeasurementTypeError:
+        except UnknownMeasurementTypeError as e:
             raise RuntimeError(
                 f"MeasurementType wasn't specified and cannot be deduced from the key -> {key}"
-            )
+            ) from e
 
     return measurement_type
 

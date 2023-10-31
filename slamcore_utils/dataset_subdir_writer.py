@@ -24,6 +24,7 @@ __license__ = "SLAMcore Confidential"
 import abc
 from pathlib import Path
 from typing import Type
+from slamcore_utils.logging import logger as pkg_logger
 
 
 class DatasetSubdirWriter(abc.ABC):
@@ -33,9 +34,10 @@ class DatasetSubdirWriter(abc.ABC):
     Slamcore output dataset directory.
     """
 
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, logger=pkg_logger):
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=False)
+        self.logger = logger
 
     def register_ros_msg_type(self, msg_type: Type) -> None:
         """

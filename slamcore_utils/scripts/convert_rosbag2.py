@@ -24,19 +24,23 @@ __license__ = "Slamcore Confidential"
 
 
 import sys
+from dataclasses import dataclass, field
 
-from slamcore_utils.logging import logger
+from PIL import Image
+
+from slamcore_utils.arg_parser import ArgumentDefaultsHelpAndRawFormatter
+from slamcore_utils.logging import logger as pkg_logger
 from slamcore_utils.math import is_symmetric
 from slamcore_utils.utils import inform_about_app_extras
 
 try:
-    from PIL import Image
-
     from slamcore_utils.ros2 import (
-        Ros2ConverterPlugin,
+        ConversionFormat,
+        get_internal_plugins_dir,
         get_topic_names_to_message_counts,
         get_topic_names_to_types,
         init_rosbag2_reader_handle_exceptions,
+        load_converter_plugins_from_multiple_files,
     )
 except ImportError:
     inform_about_app_extras(["ros2"])
@@ -44,7 +48,7 @@ except ImportError:
 try:
     import rosbag2_py
 except ModuleNotFoundError:
-    logger.error(
+    pkg_logger.error(
         "rosbag2_py module wasn't found. To make sure the rosbag2_py module is in your path, "
         "source your ROS2 setup.{*sh} file"
     )
@@ -54,34 +58,35 @@ except ModuleNotFoundError:
 import argparse
 import csv
 import json
-import operator
 import os
 import queue
 import threading
-from functools import reduce
 from pathlib import Path
-from runpy import run_path
-from typing import Dict, Mapping, Sequence, Tuple, Type, cast
+from typing import Any, Callable, Mapping, Sequence, Tuple, Type, Union
 
 import numpy as np
-import pkg_resources
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
+from sensor_msgs.msg import CompressedImage as RosCompressedImage
 from sensor_msgs.msg import Image as RosImage
 
 from slamcore_utils import fs
 from slamcore_utils.dataset_subdir_writer import DatasetSubdirWriter
-from slamcore_utils.logging import verbotsity_to_logging_lvl
+from slamcore_utils.logging import verbosity_to_logging_lvl
 from slamcore_utils.measurement_type import (
     MeasurementType,
     get_measurement_type,
     names_to_measurement_types,
     register_measurement_type,
 )
-from slamcore_utils.progress_bar import progress_bar
-from slamcore_utils.ros_utils import add_parser_args
+from slamcore_utils.progress_bar import DummyProgressBar, progress_bar
+from slamcore_utils.ros_utils import (
+    DEFAULT_NUM_JOBS,
+    DEFAULT_OVERWRITE_OUTPUT_OPT,
+    add_parser_args,
+)
 from slamcore_utils.utils import format_dict, format_list, valid_path
 
 """
@@ -121,116 +126,24 @@ Currently this is specified via a JSON file, for example:
 ```
 """
 
-# limit the queue size for reading/writing images
+JsonConts = Mapping[str, Any]
+# autodetect storage
+DEFAULT_STORAGE_TYPE = ""
+
+# limit the queue size for reading/writing images ---------------------------------------------
 # deserialization + putting to the queue is much faster than consuming elements from the Queue
 # which would lead to unbounded mem usage.
-imgq: "queue.Queue[Tuple[RosImage, Path]]" = queue.Queue(maxsize=2_000)
+imgq: "queue.Queue[Tuple[Union[RosImage,RosCompressedImage], Path, Callable]]" = queue.Queue(
+    maxsize=2_000
+)
 mutex = threading.Lock()
 count = 0
 
 
-def get_internal_plugins_dir() -> Path:
-    """
-    Get the path to the internal ROS 2 plugins.
-
-    This depends on whether the user has installed this package and executed the installed
-    script or whether they've directly executed the script via `python3 -m`
-    """
-    if __package__:
-        return (
-            Path(pkg_resources.resource_filename(__package__.split(".")[0], "ros2"))
-            / "ros2_converter_plugins"
-        )
-    else:
-        return Path(__file__).absolute().parent.parent / "ros2" / "ros2_converter_plugins"
-
-
-def load_converter_plugins_from_multiple_files(
-    converter_plugin_paths: Sequence[Path],
-    raise_on_error: bool = True,
-) -> Sequence[Ros2ConverterPlugin]:
-    if converter_plugin_paths:
-        converter_plugins = cast(
-            Sequence[Ros2ConverterPlugin],
-            reduce(
-                operator.concat,
-                (
-                    load_converter_plugins(plugin_path, raise_on_error=raise_on_error)
-                    for plugin_path in converter_plugin_paths
-                ),
-            ),
-        )
-    else:
-        return []
-
-    # Sanity check, each one of converter_plugins var is of the right type
-    for cp in converter_plugins:
-        if not isinstance(cp, Ros2ConverterPlugin):
-            raise RuntimeError(
-                "One of the specified converter plugins is not of type "
-                "Ros2ConverterPlugin, cannot proceed"
-            )
-
-    return converter_plugins
-
-
-def load_converter_plugins(
-    plugin_path: Path, raise_on_error: bool
-) -> Sequence[Ros2ConverterPlugin]:
-    """Load all the ROS 2 Converter Plugins specified in the given plugin python module.
-
-    In case of errors print the right error messages acconrdingly.
-    """
-    logger.debug(f"Loading ROS 2 converter plugin from {plugin_path} ...")
-    try:
-        ns_dict = run_path(str(plugin_path))
-    except BaseException as e:
-        e_str = f"Failed to load ROS 2 converter plugin from {plugin_path.relative_to(plugin_path.parent)}\n\nError: {e}\n\n"
-        if raise_on_error is True:
-            raise RuntimeError(f"{e_str}Exiting ...") from e
-        else:
-            logger.debug(e_str)
-            return []
-
-    # Sanity check, specified converter_plugins var
-    if "converter_plugins" not in ns_dict:
-        raise RuntimeError(
-            f"No converter plugins were exported in specified plugin -> {plugin_path}\n",
-            (
-                'Make sure that you have initialized a variable named "converter_plugins" '
-                "at the top-level of the said plugin."
-            ),
-        )
-
-    converter_plugins = ns_dict["converter_plugins"]
-
-    # Sanity check, converter_plugins var is of the right type
-    if not isinstance(converter_plugins, Sequence):
-        raise RuntimeError(
-            f"Found the converter_plugins at the top-level of the plugin ({plugin_path}) "
-            "but that variable is not of type Sequence. Its value is "
-            f"{converter_plugins} and of type {type(converter_plugins)}"
-        )
-
-    return converter_plugins
-
-
-def img_worker():
-    while True:
-        item = imgq.get()
-        msg = item[0]
-        filepath = item[1]
-        ba = np.array(msg.data, dtype=np.uint8).reshape((msg.height, msg.width))
-        Image.fromarray(ba, mode="L").save(filepath, "PNG")
-        imgq.task_done()
-
-        progress_bar_.update(1)
-
-
 # Writers -------------------------------------------------------------------------------------
 class ImuWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        super().__init__(directory=directory)
+    def __init__(self, directory, *args, **kargs):
+        super().__init__(directory=directory, *args, **kargs)
 
         self.ofs_acc = (self.directory / "acc.csv").open("w", newline="")
         self.ofs_gyro = (self.directory / "gyro.csv").open("w", newline="")
@@ -260,8 +173,10 @@ class ImuWriter(DatasetSubdirWriter):
 
 
 class CameraWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        super().__init__(directory=directory)
+    IMG_PUT_TIMEOUT = 5.0
+
+    def __init__(self, directory, *args, **kargs):
+        super().__init__(directory=directory, *args, **kargs)
         self.data_dir = self.directory / "data"
         self.data_dir.mkdir(parents=False, exist_ok=False)
 
@@ -269,7 +184,20 @@ class CameraWriter(DatasetSubdirWriter):
         self.csv_camera = csv.writer(self.ofs_camera, delimiter=",")
         self.csv_camera.writerow(["timestamp [ns]", "filename"])
 
-    def write(self, msg):
+    def register_ros_msg_type(self, msg_type: str) -> None:
+        if msg_type == "sensor_msgs/msg/Image":
+            self.write = self.write_img
+        elif msg_type == "sensor_msgs/msg/CompressedImage":
+            self.write = self.write_compressed_img
+        else:
+            NotImplementedError(f"Cannot handle message type - {type(msg_type)}")
+
+    @staticmethod
+    def _save_raw_img(msg: RosImage, filepath: Path):
+        ba = np.array(msg.data, dtype=np.uint8).reshape((msg.height, msg.width))
+        Image.fromarray(ba, mode="L").save(filepath, "PNG")
+
+    def write_img(self, msg: RosImage):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
 
         if msg.encoding not in ("mono8", "8UC1"):
@@ -281,23 +209,64 @@ class CameraWriter(DatasetSubdirWriter):
 
         img_path = self.data_dir / f"{ts}.png"
 
-        img_put_timeout = 5.0
         try:
-            imgq.put((msg, img_path), block=True, timeout=img_put_timeout)
+            imgq.put(
+                (msg, img_path, self._save_raw_img), block=True, timeout=self.IMG_PUT_TIMEOUT
+            )
         except queue.Full as e:
             raise RuntimeError(
-                f"Reached timeout of {img_put_timeout}s trying to write an image to the queue."
-                f" Couldn't write image {img_path.name}. This indicates a bug.") from e
+                f"Reached timeout of {self.IMG_PUT_TIMEOUT}s trying to write an image to the "
+                f"queue. Couldn't write image {img_path.name}. This indicates a bug."
+            ) from e
 
         self.csv_camera.writerow([ts, f"{ts}.png"])
+
+    @staticmethod
+    def _save_compressed_img(msg: RosCompressedImage, filepath: Path):
+        arr = np.frombuffer(msg.data, np.uint8)
+        bytes_ = arr.tobytes()
+        filepath.write_bytes(bytes_)
+
+    def write_compressed_img(self, msg: RosCompressedImage):
+        ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
+
+        # image_transport/image_republisher populates msg.format with a string of the form:
+        #   "mono8; png compressed "
+        format_list_ = msg.format.strip().split(";")
+        if "jpeg" in format_list_ or "jpeg compressed" in format_list_:
+            actual_format = "jpeg"
+        elif "png" in format_list_ or "png compressed":
+            actual_format = "png"
+        else:
+            raise RuntimeError(f"Format [{msg.format}] not supported yet")
+
+        img_fname = f"{ts}.{actual_format}"
+        img_path = self.data_dir / img_fname
+
+        try:
+            imgq.put(
+                (msg, img_path, self._save_compressed_img),
+                block=True,
+                timeout=self.IMG_PUT_TIMEOUT,
+            )
+        except queue.Full as e:
+            raise RuntimeError(
+                f"Reached timeout of {self.IMG_PUT_TIMEOUT}s trying to write an image to the "
+                f"queue. Couldn't write image {img_path.name}. This indicates a bug."
+            ) from e
+
+        self.csv_camera.writerow([ts, img_fname])
+
+    def write(self, msg) -> None:
+        pass
 
     def teardown(self) -> None:
         self.ofs_camera.close()
 
 
 class OdometryWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        super().__init__(directory=directory)
+    def __init__(self, directory, *args, **kargs):
+        super().__init__(directory=directory, *args, **kargs)
 
         self.ofs_odometry = (self.directory / "data.csv").open("w", newline="")
         self.csv_odometry = csv.writer(self.ofs_odometry, delimiter=",")
@@ -316,8 +285,9 @@ class OdometryWriter(DatasetSubdirWriter):
 
 
 class PoseStampedWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        super().__init__(directory=directory)
+    def __init__(self, directory, *args, **kargs):
+        super().__init__(directory=directory, *args, **kargs)
+        self._cov_matrix_warnings = 0
 
     def register_ros_msg_type(self, msg_type: str) -> None:
         self._is_pose_with_cov = msg_type == "geometry_msgs/msg/PoseWithCovarianceStamped"
@@ -359,6 +329,18 @@ class PoseStampedWriter(DatasetSubdirWriter):
 
         self.csv_writer.writerow(cols)
 
+    def _log_cov_matrix_warning(self, msg):
+        """Wrapper function to only log this warning X times to avoid extra noise in stdout."""
+        if self._cov_matrix_warnings >= 20:
+            self.logger.error(
+                f"Encountered more than {self._cov_matrix_warnings} bad covariance matrices."
+                " Will stop printing warnings now."
+            )
+            self._log_cov_matrix_warning = lambda *args, **kargs: None
+        else:
+            self.logger.warning(msg)
+        self._cov_matrix_warnings += 1
+
     def write_pose_stamped(self, msg: PoseStamped):
         ts = int(msg.header.stamp.sec * 1e9) + int(msg.header.stamp.nanosec)
         p = msg.pose.position
@@ -375,11 +357,11 @@ class PoseStampedWriter(DatasetSubdirWriter):
 
         # checks on the covariance
         if cov2d[-1, -1] == -1:
-            logger.warning(
+            self._log_cov_matrix_warning(
                 f"Covariance of current message is invalid (== -1)\nMessage:\n\n{msg}"
             )
         if not is_symmetric(cov2d):
-            logger.warning(
+            self._log_cov_matrix_warning(
                 f"Covariance of current message is not symmetric\nMessage:\n\n{msg}"
             )
 
@@ -417,9 +399,12 @@ slamcore_pose_compatible_msgs = [
     "nav_msgs/msg/Odometry",
 ]
 
+
+slamcore_cam_compatible_msgs = ["sensor_msgs/msg/Image", "sensor_msgs/msg/CompressedImage"]
+
 measurement_to_msg_type: Mapping[MeasurementType, Sequence[str]] = {
-    names_to_measurement_types["Infrared"]: ["sensor_msgs/msg/Image"],
-    names_to_measurement_types["Cam"]: ["sensor_msgs/msg/Image"],
+    names_to_measurement_types["Infrared"]: slamcore_cam_compatible_msgs,
+    names_to_measurement_types["Cam"]: slamcore_cam_compatible_msgs,
     names_to_measurement_types["Imu"]: ["sensor_msgs/msg/Imu"],
     names_to_measurement_types["Odometry"]: ["nav_msgs/msg/Odometry"],
     names_to_measurement_types["GroundTruth"]: slamcore_pose_compatible_msgs,
@@ -428,20 +413,166 @@ measurement_to_msg_type: Mapping[MeasurementType, Sequence[str]] = {
 }
 
 
-class ArgumentDefaultsHelpAndRawFormatter(
-    argparse.RawDescriptionHelpFormatter, argparse.ArgumentDefaultsHelpFormatter
-):
-    pass
+def img_worker():
+    while True:
+        item = imgq.get()
+        msg = item[0]
+        filepath = item[1]
+        save_fn = item[2]
+        save_fn(msg, filepath)
+        progress_bar_.update(1)  # type: ignore
+        imgq.task_done()
 
 
-# main ----------------------------------------------------------------------------------------
-def main():
-    # argument parsing and sanity checks ------------------------------------------------------
+# conversion struct ---------------------------------------------------------------------------
+@dataclass
+class ConversionProps:
+    topic_name: str
+    writer: DatasetSubdirWriter
+    measurement_type: MeasurementType
+    sc_directory: Path
+
+
+# map of topic name -> conversion properties
+ConversionMap = Mapping[str, ConversionProps]
+
+
+# ConversionPropsAssembler class --------------------------------------------------------------
+class ConversionPropsAssembler:
+    def __init__(
+        self, sc_dataset_path: Path, rosbag_topics: Mapping[str, str], logger=pkg_logger
+    ):
+        self._sc_dataset_path = sc_dataset_path
+        self._rosbag_topics = rosbag_topics
+        self._logger = logger
+
+    def assemble_from_rigid_format(self, json_conts: JsonConts) -> ConversionMap:
+        conversion_map: ConversionMap = {}
+
+        for key, val in json_conts.items():
+            measurement_type = get_measurement_type(key, val)
+            topic_name = json_conts[key]["topic"]
+
+            # sanity checks -------------------------------------------------------------------
+            rosbag_topic = self._rosbag_topics.get(topic_name)
+            if rosbag_topic is None:
+                raise RuntimeError(
+                    f'Cannot find topic "{topic_name}" in the given rosbag.'
+                    f" Available topics are: {list(self._rosbag_topics.keys())}"
+                )
+
+            self._check_msg_type(topic_name=topic_name, measurement_type=measurement_type)
+
+            # populate properties -------------------------------------------------------------
+            conversion_map[topic_name] = self._init_conversion_props(
+                key=key, measurement_type=measurement_type, topic_name=topic_name
+            )
+
+        return conversion_map
+
+    def assemble_from_flexible_format(self, json_conts: JsonConts) -> ConversionMap:
+        conversion_map: ConversionMap = {}
+
+        # For each one of the keys:
+        # * If this key is mandatory, iterate over its topics and make sure that at least one
+        #   is in the rosbag
+        # * If the key is not mandatory iterate over its topics and if none exists in the
+        #   rosbag, issue a warning
+        for key, val in json_conts.items():
+            measurement_type = get_measurement_type(key, val)
+            is_required = val.get("required", True)
+
+            # determine the topic name --------------------------------------------------------
+            topic_name = val.get("topic", None)
+            if topic_name is None:
+                found_topics = [
+                    topic for topic in val["topics"] if topic in self._rosbag_topics
+                ]
+                if not found_topics:
+                    msg = (
+                        f"None of the potential topics were found in the given rosbag\n\n"
+                        f'Topic I\'m looking for: {val["topics"]}\n\n'
+                        f"Topics in given rosbag: {self._rosbag_topics}\n\n"
+                    )
+                    if is_required:
+                        raise RuntimeError(msg)
+                    else:
+                        self._logger.warning(msg)
+                        continue
+
+                topic_name = found_topics[0]
+                if len(found_topics) != 1:
+                    self._logger.warning(
+                        f"Multiple candidate topic names match for {key} -> {found_topics}. "
+                        f"Choosing {topic_name} ."
+                    )
+
+            self._check_msg_type(topic_name=topic_name, measurement_type=measurement_type)
+
+            # populate properties -------------------------------------------------------------
+            conversion_map[topic_name] = self._init_conversion_props(
+                key=key, measurement_type=measurement_type, topic_name=topic_name
+            )
+        return conversion_map
+
+    def _init_conversion_props(
+        self, key, measurement_type: MeasurementType, topic_name: str
+    ) -> ConversionProps:
+        self._logger.debug(f"Mapping {measurement_type.name:15} - {topic_name} -> {key}...")
+        sc_dataset_subdir = self._sc_dataset_path / key
+        writer = measurement_type_to_writer_type[measurement_type](
+            directory=sc_dataset_subdir, logger=self._logger
+        )
+        rosbag_msg_type: str = self._rosbag_topics[topic_name]
+        writer.register_ros_msg_type(rosbag_msg_type)
+        writer.prepare_write()
+
+        # add to conversion map -----------------------------------------------------------
+        return ConversionProps(
+            topic_name=topic_name,
+            writer=writer,
+            sc_directory=sc_dataset_subdir,
+            measurement_type=measurement_type,
+        )
+
+    def _check_msg_type(self, topic_name: str, measurement_type: MeasurementType):
+        """Make sure that the topic found contains messages of the right type.
+
+        Raise RuntimeError otherwise.
+        """
+        rosbag_msg_type: str = self._rosbag_topics[topic_name]
+        if rosbag_msg_type not in measurement_to_msg_type[measurement_type]:
+            raise RuntimeError(
+                f"Topic type mismatch for topic {topic_name} - "
+                f'Expected: "{measurement_to_msg_type[measurement_type]}", '
+                f'Actual rosbag topic -> "{rosbag_msg_type}"'
+            )
+
+
+# argument parsing ----------------------------------------------------------------------------
+def parse_args() -> argparse.Namespace:
+    """CLI argument parsing and sanity checks."""
     parser = argparse.ArgumentParser(
         description="Convert ROS2 Bags to the Slamcore Dataset Reader format.",
         formatter_class=ArgumentDefaultsHelpAndRawFormatter,
     )
     add_parser_args(parser)
+
+    parser.add_argument(
+        "-s",
+        "--storage",
+        dest="storage_type",
+        default=DEFAULT_STORAGE_TYPE,
+        required=False,
+        help="Type of rosbag storage (sqlite3, mcap). Omit to deduce based on file extension.",
+    )
+
+    parser.add_argument(
+        "--disable-progress-bar",
+        dest="disable_progress_bar",
+        help="Disable the progress bar altogether",
+        action="store_true",
+    )
 
     parser.add_argument(
         "-p",
@@ -475,18 +606,52 @@ def main():
         items=[f"{k}\n    {executable} {v}\n" for k, v in usecases.items()],
     )
 
-    parser_args = vars(parser.parse_args())
+    return parser.parse_args()
 
-    # verbosity
-    verbosity = parser_args["verbosity"]
-    logger.setLevel(verbotsity_to_logging_lvl(verbosity))
 
-    # user-specified plugins
-    converter_plugin_paths: Sequence[Path] = parser_args["converter_plugins"]
-    converter_plugins = load_converter_plugins_from_multiple_files(converter_plugin_paths)
+@dataclass(frozen=True)
+class Config:
+    """convert_rosbag2 Configuration Class."""
+
+    bag_path: Path
+    config_path: Path
+    output_dir: Path
+    converter_plugin_paths: Sequence[Path] = field(default_factory=list)
+    jobs: int = DEFAULT_NUM_JOBS
+    overwrite_output: bool = DEFAULT_OVERWRITE_OUTPUT_OPT
+    storage_type: str = DEFAULT_STORAGE_TYPE
+    use_progress_bar: bool = True
+    verbosity_lvl: int = 0
+
+
+def get_cli_assembled_config() -> Config:
+    """Assemble the app Config instance by parsing CLI arguments."""
+    cli_args = vars(parse_args())
+
+    cfg = Config(
+        bag_path=cli_args["bag"],
+        config_path=cli_args["config"],
+        converter_plugin_paths=cli_args["converter_plugins"],
+        jobs=cli_args["jobs"],
+        output_dir=cli_args["output"],
+        overwrite_output=cli_args["overwrite"],
+        storage_type=cli_args["storage_type"],
+        use_progress_bar=not cli_args["disable_progress_bar"],
+        verbosity_lvl=cli_args["verbosity"],
+    )
+    return cfg
+
+
+# conversion function -------------------------------------------------------------------------
+def convert_rosbag2(cfg: Config, logger=pkg_logger):
+    if logger is pkg_logger:
+        logger.setLevel(verbosity_to_logging_lvl(cfg.verbosity_lvl))
+
+    converter_plugins = load_converter_plugins_from_multiple_files(cfg.converter_plugin_paths)
+    out_path = cfg.output_dir
 
     # internal plugins
-    # internal plugins attempt to load plugins that are shipped with this tool.
+    # attempt to load plugins that are shipped with this tool.
     internal_plugins_dir = get_internal_plugins_dir()
     internal_converter_plugin_paths = [
         internal_plugins_dir / internal_plugin
@@ -497,29 +662,25 @@ def main():
         internal_converter_plugin_paths, raise_on_error=False
     )
 
-    # rosbag file
-    bag_path = Path(parser_args["bag"])
-    if not bag_path.exists():
-        raise FileNotFoundError(bag_path)
-    if not bag_path.is_file():
-        raise FileNotFoundError(
-            f"Expected path to bag file - found path to directory instead -> {bag_path}"
-        )
+    # config file
+    with cfg.config_path.open() as f:
+        # skip lines starting with comments `// `, e.g., in .jsonc files
+        lines = [li for li in f.readlines() if not li.lstrip().startswith("// ")]
+        json_conts = json.loads(" ".join(lines))
 
-    # output directory
-    out_path = Path(parser_args["output"])
+    # determine format ------------------------------------------------------------------------
+    conversion_format = ConversionFormat.detect_format(json=json_conts)
 
-    # overwrite
-    overwrite = parser_args["overwrite"]
+    # output path already exists? generate a new one
+    out_path = fs.get_ready_output_path(
+        out_path, overwrite_path=cfg.overwrite_output, logger=logger
+    )
+    out_path.mkdir()
 
-    # jobs
-    jobs = parser_args["jobs"]
-
-    # storage
-    storage = parser_args["storage"]
-
-    if not storage:
-        file_extension = bag_path.suffix
+    # storage type autodetection --------------------------------------------------------------
+    storage_type = cfg.storage_type
+    if not storage_type:
+        file_extension = cfg.bag_path.suffix
 
         if not file_extension:
             raise RuntimeError(
@@ -527,39 +688,27 @@ def main():
                 "not explicitly specified in the command line. Cannot proceed."
             )
         elif file_extension == ".mcap":
-            storage = "mcap"
+            storage_type = "mcap"
         elif file_extension in [".sqlite3", ".db3"]:
-            storage = "sqlite3"
+            storage_type = "sqlite3"
         else:
             raise NotImplementedError(f"Unrecognised file extension {file_extension}.")
 
-        logger.info(f"Determined storage type {storage} from file extension {file_extension}")
-
-    # output path already exists - generate a new one
-    out_path = fs.get_ready_output_path(out_path, overwrite_path=overwrite)
-    out_path.mkdir()
-
-    # config file
-    config_path = Path(parser_args["config"])
-    if not config_path.is_file():
-        raise FileNotFoundError(config_path)
-    with config_path.open() as f:
-        # skip lines starting with comments `// `, e.g., in .jsonc files
-        lines = [li for li in f.readlines() if not li.lstrip().startswith("// ")]
-        cfg = json.loads(" ".join(lines))
+        logger.info(
+            f"Determined storage type {storage_type} from file extension {file_extension}"
+        )
 
     # print summary ---------------------------------------------------------------------------
     if converter_plugins:
         plugins_str = " | ".join(str(p) for p in converter_plugins)
     else:
         plugins_str = "None"
-
     announce_items = {
-        "Input bag file": bag_path,
-        "Storage": storage,
+        "Input bag file": cfg.bag_path,
+        "Storage": storage_type,
         "Output directory": out_path,
-        f"Converter plugins {len(converter_plugins)}": plugins_str,
-        "Overwrite output directory": overwrite,
+        f"{len(converter_plugins)} Converter plugins ": plugins_str,
+        "Overwrite output directory": cfg.overwrite_output,
     }
     logger.warning(
         format_dict(
@@ -592,93 +741,60 @@ def main():
 
     # parse rosbag ----------------------------------------------------------------------------
     rosbag_info, reader = init_rosbag2_reader_handle_exceptions(
-        bag_path=bag_path, storage=storage
+        bag_path=cfg.bag_path, storage=storage_type
     )
-    rosbag_topics = get_topic_names_to_types(reader)
     message_counts = get_topic_names_to_message_counts(rosbag_info)
+    rosbag_topics = get_topic_names_to_types(reader)
+
+    # discard topics with 0 messages
+    for topic_name in list(rosbag_topics.keys()):
+        if message_counts[topic_name] == 0:
+            logger.warning(
+                f"rosbag contains 0 messages for topic {topic_name}. Discarding it."
+            )
+            rosbag_topics.pop(topic_name)
 
     (out_path / "metadata.txt").write_text(str(rosbag_info))
     logger.debug(f"Rosbag metadata:\n\n{rosbag_info}")
 
-    # helper structs and functions ------------------------------------------------------------
-    def get_cfg_topics(name: str) -> Sequence[str]:
-        """Get a list of all the topics for the key at hand."""
-        # handle gyro/accel explicitly
-        if "gyro_topic" in cfg[name].keys():
-            raise NotImplementedError(
-                "Split gyro/accelerometer measurements are not currently supported."
-            )
-        else:
-            return [cfg[name]["topic"]]
-
-    # JSON file based sanity checks -----------------------------------------------------------
-    logger.info("Validating input config file and contents of rosbag...")
-    key_to_measurement_types: Mapping[str, MeasurementType] = {}
-    for key, val in cfg.items():
-        measurement_type = get_measurement_type(key, val)
-        key_to_measurement_types[key] = measurement_type
-        cfg_topics = get_cfg_topics(key)
-
-        # check that the type of the topics in the bag matches that of the JSON ---------------
-        for topic_name in cfg_topics:
-            rosbag_topic = rosbag_topics.get(topic_name)
-            if rosbag_topic is None:
-                raise RuntimeError(
-                    f'Cannot find topic "{topic_name}" in the given rosbag.'
-                    f" Available topics are: {list(rosbag_topics.keys())}"
-                )
-            rosbag_msg_type: str = rosbag_topics[topic_name]
-            if rosbag_msg_type not in measurement_to_msg_type[measurement_type]:
-                raise RuntimeError(
-                    f"Topic type mismatch for topic {topic_name} - "
-                    f'Expected: "{measurement_to_msg_type[measurement_type]}", '
-                    f'Actual rosbag topic -> "{rosbag_msg_type}"'
-                )
-
-    # populate writers ------------------------------------------------------------------------
-    # build a map of topic name -> writer
-    # during bag playback, only consider topics in our config
-    writers: Dict[str, DatasetSubdirWriter] = {}
-    logger.debug("Initializing writers and registering ROS message types ...")
-    topics_filter: Sequence[str] = []
-    for key in cfg.keys():
-        measurement_type = key_to_measurement_types[key]
-        cfg_topics = get_cfg_topics(key)
-        assert len(cfg_topics) == 1
-        topic_name = cfg_topics[0]
-        directory = out_path / key
-        writers[topic_name] = measurement_type_to_writer_type[measurement_type](
-            directory=directory
+    # assemble conversion config --------------------------------------------------------------
+    conv_props_assembler = ConversionPropsAssembler(
+        sc_dataset_path=out_path, rosbag_topics=rosbag_topics, logger=logger
+    )
+    logger.info("Validating input config file and contents of rosbag, initializing writers...")
+    if conversion_format[0] is ConversionFormat.RIGID:
+        conversion_map = conv_props_assembler.assemble_from_rigid_format(json_conts=json_conts)
+    elif ConversionFormat.FLEXIBLE:
+        conversion_map = conv_props_assembler.assemble_from_flexible_format(
+            json_conts=json_conts
         )
+    else:
+        raise NotImplementedError(f"Cannot process conversion format {conversion_format[0]}")
 
-        logger.debug(f"Mapping {measurement_type.name:15} - {topic_name} -> {key}...")
-        topics_filter.append(topic_name)
-
-        for topic_name, writer in writers.items():
-            rosbag_msg_type: str = rosbag_topics[topic_name]
-            writer.register_ros_msg_type(rosbag_msg_type)
-            writer.prepare_write()
-
-        # update total counter based on the number of camera topics
-        if measurement_type.is_camera:
+    # initialize progress bar -----------------------------------------------------------------
+    for conversion_props in conversion_map.values():
+        if conversion_props.measurement_type.is_camera:
             with mutex:
                 global count
-                count += message_counts[topic_name]
-
+                count += message_counts[conversion_props.topic_name]
     global progress_bar_
-    progress_bar_ = progress_bar(total=count)
+    if cfg.use_progress_bar:
+        progress_bar_ = progress_bar(total=count)
+    else:
+        progress_bar_ = DummyProgressBar()
 
-    storage_filter = rosbag2_py.StorageFilter(topics=topics_filter)
+    # consume only the topics we're interested in ---------------------------------------------
+    storage_filter = rosbag2_py.StorageFilter(topics=list(conversion_map.keys()))
     reader.set_filter(storage_filter)
 
     # main conversion loop --------------------------------------------------------------------
     # start the PNG encoding workers
     worker_threads: Sequence[threading.Thread] = []
-    for _ in range(jobs):
+    for _ in range(cfg.jobs):
         t = threading.Thread(target=img_worker, daemon=True)
         t.start()
         worker_threads.append(t)
-    logger.info("Consuming rosbag...")
+    logger.warning("Consuming rosbag, this may take a while...")
 
     # consume rosbag
     while reader.has_next():
@@ -692,18 +808,24 @@ def main():
                 f"Original error: {e}"
             )
             continue
-        writers[topic].write(msg)
-    logger.info("Consumed rosbag.")
+        conversion_map[topic].writer.write(msg)
 
+    logger.info("Consumed rosbag.")
     logger.info("Flushing pending data...")
     imgq.join()
     logger.info("Flushed pending data.")
 
     # teardown actions ------------------------------------------------------------------------
-    for writer in writers.values():
+    for writer in [v.writer for v in conversion_map.values()]:
         writer.teardown()
 
-    logger.warning(f"Finished converting {bag_path} -> {out_path} .")
+    logger.warning(f"Finished converting {cfg.bag_path} -> {out_path} .")
+
+
+# main ----------------------------------------------------------------------------------------
+def main():
+    cfg = get_cli_assembled_config()
+    convert_rosbag2(cfg=cfg)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from slamcore_utils.scripts.convert_rosbag2 import Config, convert_rosbag2
 
 import slamcore_utils.test_utils
 from slamcore_utils.test_utils import UT_Command, get_test_help_cmds, run_UT_commands
@@ -35,6 +36,11 @@ def test_convert_rosbag2_noargs_help():
 
 
 @pytest.fixture
+def trimmed_rosbag2() -> Path:
+    return toplevel_test_data / "trimmed_rosbag2" / "trimmed_rosbag2_0.db3"
+
+
+@pytest.fixture
 def txt_suffix_handler_mod():
     # the metadata.txt file contains the current date - comparing it against the expected one
     # would always fails
@@ -52,17 +58,23 @@ def txt_suffix_handler_mod():
         suffixes[".txt"] = prev_handler
 
 
-def test_convert_rosbag2_std_usage(txt_suffix_handler_mod):
-    """Make sure that a standard conversion works."""
-    rosbag2 = f"{toplevel_test_data}/trimmed_rosbag2/trimmed_rosbag2_0.db3"
+# smoke tests ---------------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "cfg_fname",
+    (
+        "rigid_ros2_conversion.jsonc",
+        "rigid_ros2_conversion.jsonc",
+        "flexible_ros2_conversion.jsonc",
+    ),
+)
+def test_convert_rosbag2_std_usage(txt_suffix_handler_mod, trimmed_rosbag2: Path, cfg_fname: str):
+    cfg_path = toplevel_test_data / cfg_fname
 
+    """Make sure that a standard conversion works."""
     run_UT_commands(
         UT_Command(
-            test_name="slamcore_convert_rosbag2_std_usage",
-            command=(
-                f"{exec_name} -v -b {rosbag2} -o output -c "
-                f"{toplevel_test_data}/trimmed_rosbag2.json"
-            ),
+            test_name=f"slamcore_convert_rosbag2_{cfg_path.stem}",
+            command=(f"{exec_name} -v -b {trimmed_rosbag2} -o output -c {cfg_path}"),
             outputs=[
                 Path("output"),
             ],
@@ -72,15 +84,14 @@ def test_convert_rosbag2_std_usage(txt_suffix_handler_mod):
     )
 
 
-def test_convert_rosbag2_with_plugin(txt_suffix_handler_mod):
+def test_convert_rosbag2_with_plugin(txt_suffix_handler_mod, trimmed_rosbag2: Path):
     """Make sure that a conversion works when a plugin is specified"""
-    rosbag2 = f"{toplevel_test_data}/trimmed_rosbag2/trimmed_rosbag2_0.db3"
 
     run_UT_commands(
         UT_Command(
             test_name="slamcore_convert_rosbag2_with_plugin",
             command=(
-                f"{exec_name} -v -b {rosbag2} -o output -c cfg.jsonc "
+                f"{exec_name} -v -b {trimmed_rosbag2} -o output -c cfg.jsonc "
                 "-p distance_travelled_conversion_plugin.py -o output --overwrite"
             ),
             outputs=[
@@ -90,3 +101,18 @@ def test_convert_rosbag2_with_plugin(txt_suffix_handler_mod):
             cd_test_dir=True,
         ),
     )
+
+
+# test the main convert_rosbag2 function ------------------------------------------------------
+def test_convert_rosbag2_faulty_config(trimmed_rosbag2: Path, tmp_path: Path):
+    """Make sure that a conversion works when a plugin is specified"""
+    cfg_path = toplevel_test_data / "faulty_ros2_conversion_config.jsonc"
+    output_dir = tmp_path / "output"
+
+    cfg = Config(bag_path=trimmed_rosbag2, config_path=cfg_path, output_dir=output_dir)
+
+    with pytest.raises(
+        RuntimeError, match="Unknown conversion format -> unknown_format."
+    ):
+        convert_rosbag2(cfg=cfg)
+    assert not output_dir.exists()

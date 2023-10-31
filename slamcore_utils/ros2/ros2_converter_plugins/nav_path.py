@@ -24,13 +24,12 @@ __license__ = "SLAMcore Confidential"
 import csv
 from pathlib import Path
 from geometry_msgs.msg import PoseStamped
+from slamcore_utils.dataset_subdir_writer import DatasetSubdirWriter
+from slamcore_utils.measurement_type import MeasurementType
 
-from slamcore_utils import DatasetSubdirWriter, MeasurementType, setup_pkg_logging
 from slamcore_utils.ros2 import Ros2ConverterPlugin, Ros2PluginInitializationFailureError
 
 plugin_name = Path(__file__).name
-logger = setup_pkg_logging(plugin_name)
-
 try:
     from nav_msgs.msg import Path as NavPath
 except ModuleNotFoundError:
@@ -47,9 +46,6 @@ except ModuleNotFoundError:
 
 class NavPathWriter(DatasetSubdirWriter):
     """Convert a single nav_msgs/Path msg to a Slamcore-compatible CSV file of poses."""
-
-    def __init__(self, directory):
-        super().__init__(directory=directory)
 
     def prepare_write(self) -> None:
         self.ofs_data = (self.directory / "data.csv").open("w", newline="")
@@ -89,7 +85,7 @@ class NavPathWriter(DatasetSubdirWriter):
         self.write = self._write_nop
 
     def _write_nop(self, msg) -> None:
-        logger.warning(
+        self.logger.warning(
             f"{self.__class__.__name__} expected only a single message to convert. "
             f"Instead it just received additional message(s) - msg: {msg}"
         )

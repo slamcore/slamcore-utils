@@ -1,8 +1,15 @@
-"""Helper methods to utilize to use with the argparse module for command line options parsing. """
+"""
+Helper methods to utilize to use with the argparse module for command line options parsing.
+"""
 
-from argparse import ArgumentParser, ArgumentTypeError
+from argparse import (
+    ArgumentDefaultsHelpFormatter,
+    ArgumentParser,
+    ArgumentTypeError,
+    RawDescriptionHelpFormatter,
+)
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 help_msgs: Dict[str, str] = {}
 arg_defaults: Dict[str, Any] = {}
@@ -49,7 +56,10 @@ def non_existing_dir(path: str) -> Path:
 
 
 def add_bool_argument(
-    parser: ArgumentParser, arg_name: str, default: bool = None, true_help: str = None
+    parser: ArgumentParser,
+    arg_name: str,
+    default: Optional[bool] = None,
+    true_help: Optional[str] = None,
 ):
     """Add a boolean CLI argument to the given ArgumentParser object.
 
@@ -103,11 +113,23 @@ def add_bool_argument(
 
     group = parser.add_mutually_exclusive_group()
 
-    true_help = true_help if default == False else f"{true_help} [default]"
-    false_help = "" if default == True else "[default]"
+    true_help = true_help if default is False else f"{true_help} [default]"
+    false_help = "" if default is True else "[default]"
 
     group.add_argument(_format("--"), dest=arg_name, action="store_true", help=true_help)
     group.add_argument(_format("--no-"), dest=arg_name, action="store_false", help=false_help)
 
     if default:
         eval("group.set_defaults({}=default)".format(arg_name))
+
+
+# Argument Help Formatter ---------------------------------------------------------------------
+class ArgumentDefaultsHelpAndRawFormatter(
+    RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
+):
+    """
+    Parser that displays both the help description in its raw format and also shows the
+    default options for its arguments.
+    """
+
+    pass

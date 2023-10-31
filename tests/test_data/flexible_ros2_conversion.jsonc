@@ -1,0 +1,25 @@
+{
+  // conversion metadata
+  "conversion_meta": {
+    "format": "flexible",
+    "version": 1
+  },
+
+  // SLAM Input topics
+  "ir0": {
+    "topics": ["/slamcore/visible_0/image_raw", "/slamcore/fake/image_raw"]
+  },
+  "ir1": {
+    "topics": ["/slamcore/fake/image_raw", "/slamcore/visible_1/image_raw"]
+  },
+  "imu0": {
+    "topic": "/irrelevant_imu"
+  },
+  "odometry0": {
+    "topic": "/slamcore/odom",
+    "required": false
+  },
+  "groundtruth0": {
+    "topic": "/irrelevant_gts"
+  }
+}

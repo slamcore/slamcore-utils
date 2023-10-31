@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slamcore_utils"
-version = "0.1.8a"
+version = "0.1.8a1"
 description = "SLAMcore SLAM Utilities"
 authors = ["Nikos Koukis <nikolaos@slamcore.com>"]
 license = "BSD License"

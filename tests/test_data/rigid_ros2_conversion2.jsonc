@@ -1,0 +1,22 @@
+{
+  // conversion metadata
+  "conversion_meta": {
+    "format": "rigid",
+    "version": 1
+  },
+  "ir0": {
+    "topic": "/slamcore/visible_0/image_raw"
+  },
+  "ir1": {
+    "topic": "/slamcore/visible_1/image_raw"
+  },
+  "imu0": {
+    "topic": "/irrelevant_imu"
+  },
+  "odometry0": {
+    "topic": "/slamcore/odom"
+  },
+  "groundtruth0": {
+    "topic": "/irrelevant_gts"
+  }
+}

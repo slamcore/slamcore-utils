@@ -22,7 +22,7 @@ __license__ = "SLAMcore Confidential"
 
 import sys
 from pathlib import Path
-from typing import Mapping, Tuple
+from typing import Mapping, Tuple, Dict
 
 import rosbag2_py
 
@@ -63,7 +63,7 @@ def init_rosbag2_reader(bag_path: Path, storage: str) -> InfoAndReader:
     return info, reader
 
 
-def get_topic_names_to_types(reader) -> Mapping[str, str]:
+def get_topic_names_to_types(reader) -> Dict[str, str]:
     return {t.name: t.type for t in reader.get_all_topics_and_types()}
 
 

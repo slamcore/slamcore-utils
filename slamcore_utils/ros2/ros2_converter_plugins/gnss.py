@@ -27,11 +27,10 @@ from geometry_msgs.msg import PoseStamped
 
 import numpy as np
 
-from slamcore_utils import DatasetSubdirWriter, MeasurementType, setup_pkg_logging
+from slamcore_utils import DatasetSubdirWriter, MeasurementType
 from slamcore_utils.ros2 import Ros2ConverterPlugin, Ros2PluginInitializationFailureError
 
 plugin_name = Path(__file__).name
-logger = setup_pkg_logging(plugin_name)
 
 try:
     from gps_msgs.msg import GPSFix
@@ -53,9 +52,6 @@ class GPSAsPoseStampedWriter(DatasetSubdirWriter):
     # constants for the potential conversion of LLA -> XYZ if given GPS data
     EARTH_RADIUS_M = 6378137.0
     FLATTENING_RATIO = 1.0 / 298.257224
-
-    def __init__(self, directory):
-        super().__init__(directory=directory)
 
     def prepare_write(self) -> None:
         self.ofs_data = (self.directory / "data.csv").open("w", newline="")

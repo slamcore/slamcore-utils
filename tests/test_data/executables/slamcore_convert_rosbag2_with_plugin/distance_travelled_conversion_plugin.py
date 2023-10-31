@@ -33,8 +33,8 @@ logger = setup_pkg_logging(plugin_name)
 
 
 class DistanceTravelledWriter(DatasetSubdirWriter):
-    def __init__(self, directory):
-        super().__init__(directory=directory)
+    def __init__(self, *args, **kargs):
+        super().__init__(*args, **kargs)
 
         self.ofs_tracking_status = (self.directory / "data.csv").open("w", newline="")
         self.csv_tracking_status = csv.writer(self.ofs_tracking_status, delimiter=",")

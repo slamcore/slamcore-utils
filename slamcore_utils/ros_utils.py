@@ -23,12 +23,16 @@ __license__ = "SLAMcore Confidential"
 
 import argparse
 import os
-from typing import Any, Mapping, NoReturn
+from pathlib import Path
+from typing import NoReturn
 
-from slamcore_utils.arg_parser import add_bool_argument
+from slamcore_utils.arg_parser import add_bool_argument, existing_file
 
 """ROS Utilities - independent of ROS version."""
 
+# default number of jobs to use for conversion
+DEFAULT_NUM_JOBS=len(os.sched_getaffinity(0))
+DEFAULT_OVERWRITE_OUTPUT_OPT=False
 
 def _positive_int(val: str):
     def _raise() -> NoReturn:
@@ -46,15 +50,22 @@ def _positive_int(val: str):
 
 
 def add_parser_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("-b", "--bag", required=True, help="Path to input ROS bag file")
+    parser.add_argument(
+        "-b", "--bag", type=existing_file, required=True, help="Path to input ROS bag file"
+    )
     parser.add_argument(
         "-o",
         "--output",
+        type=Path,
         required=True,
         help="Path to output directory in Slamcore Dataset Format",
     )
     parser.add_argument(
-        "-c", "--config", required=True, help="Path to JSON configuration file"
+        "-c",
+        "--config",
+        type=existing_file,
+        required=True,
+        help="Path to JSON configuration file",
     )
     parser.add_argument(
         "-v", "--verbosity", action="count", help="Increase output verbosity", default=0
@@ -63,7 +74,7 @@ def add_parser_args(parser: argparse.ArgumentParser) -> None:
         "-j",
         "--jobs",
         help="Number of parallel jobs to use during conversion",
-        default=len(os.sched_getaffinity(0)),
+        default=DEFAULT_NUM_JOBS,
         required=False,
         type=_positive_int,
     )
@@ -71,14 +82,6 @@ def add_parser_args(parser: argparse.ArgumentParser) -> None:
     add_bool_argument(
         parser=parser,
         arg_name="overwrite",
-        default=False,
+        default=DEFAULT_OVERWRITE_OUTPUT_OPT,
         true_help="Overwrite destination location",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--storage",
-        default="",
-        required=False,
-        help="Type of rosbag storage (sqlite3, mcap). Omit to deduce based on file extension.",
     )

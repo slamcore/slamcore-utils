@@ -22,6 +22,11 @@ __license__ = "SLAMcore Confidential"
 
 
 try:
+    from .plugin_utils import (
+        get_internal_plugins_dir,
+        load_converter_plugins,
+        load_converter_plugins_from_multiple_files,
+    )
     from .ros2_converter_plugin import (
         Ros2ConverterPlugin,
         Ros2PluginInitializationFailureError,
@@ -33,6 +38,8 @@ try:
         init_rosbag2_reader_handle_exceptions,
     )
 
+    from .conversion_format import ConversionFormat
+
     __all__ = [
         "Ros2ConverterPlugin",
         "Ros2PluginInitializationFailureError",
@@ -40,6 +47,10 @@ try:
         "get_topic_names_to_types",
         "init_rosbag2_reader",
         "init_rosbag2_reader_handle_exceptions",
+        "get_internal_plugins_dir",
+        "load_converter_plugins",
+        "load_converter_plugins_from_multiple_files",
+        "ConversionFormat",
     ]
 except ModuleNotFoundError as e:
     print(

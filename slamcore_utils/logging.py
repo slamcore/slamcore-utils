@@ -58,7 +58,7 @@ _verbosity_to_logging_lvls = {
 }
 
 
-def verbotsity_to_logging_lvl(verbosity: int) -> int:
+def verbosity_to_logging_lvl(verbosity: int) -> int:
     """Map CLI-provided verbosity count e.g., -vvv to logging module level."""
     if verbosity > 2:
         return logging.DEBUG

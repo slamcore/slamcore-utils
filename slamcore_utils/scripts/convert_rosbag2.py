@@ -484,15 +484,15 @@ class ConversionPropsAssembler:
 
             # determine the topic name --------------------------------------------------------
             topic_name = val.get("topic", None)
-            if topic_name is None:
+            if topic_name is None:  # no "topic", look for "topics"
                 found_topics = [
                     topic for topic in val["topics"] if topic in self._rosbag_topics
                 ]
                 if not found_topics:
                     msg = (
-                        f"None of the potential topics were found in the given rosbag\n\n"
-                        f'Topic I\'m looking for: {val["topics"]}\n\n'
-                        f"Topics in given rosbag: {self._rosbag_topics}\n\n"
+                        f"None of the potential topics were found in the given rosbag. "
+                        f'Topic names I\'m looking for: {val["topics"]}. '
+                        f"Topics in given rosbag: {self._rosbag_topics}"
                     )
                     if is_required:
                         raise RuntimeError(msg)
@@ -506,6 +506,19 @@ class ConversionPropsAssembler:
                         f"Multiple candidate topic names match for {key} -> {found_topics}. "
                         f"Choosing {topic_name} ."
                     )
+            else:
+                is_in_rosbag = topic_name in self._rosbag_topics
+                if not is_in_rosbag:
+                    msg = (
+                        f"Topic was not found in the given rosbag. "
+                        f"Topic I'm looking for: {topic_name}. "
+                        f"Topics in given rosbag: {self._rosbag_topics}"
+                    )
+                    if is_required:
+                        raise RuntimeError(msg)
+                    else:
+                        self._logger.warning(msg)
+                        continue
 
             self._check_msg_type(topic_name=topic_name, measurement_type=measurement_type)
 

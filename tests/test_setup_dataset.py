@@ -129,7 +129,6 @@ class TestSetupDatasetExecutable:
         <...>/mav0 instead.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-
             expect(proc, "which one of these datasets")
             proc.send(KeyInputs.ENTER)
             expect(proc, "you already downloaded the")

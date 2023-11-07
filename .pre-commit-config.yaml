@@ -1,0 +1,53 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: "v4.4.0"
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  - repo: https://github.com/tcort/markdown-link-check
+    rev: "v3.10.3"
+    hooks:
+      # https://github.com/tcort/markdown-link-check#config-file-format
+      - id: markdown-link-check
+        args: ["--progress", "--config", ".markdown-link-check.json"]
+  - repo: https://github.com/markdownlint/markdownlint
+    rev: "v0.12.0"
+    hooks:
+      - id: markdownlint
+        # exclude: ^.github/
+        entry: mdl -c .markdownlint.json -r ~MD024,~MD033,~MD013,~MD034,~MD029,~MD007
+  - repo: local
+    hooks:
+      - id: black
+        name: Black formatter
+        description: "Black: The uncompromising Python code formatter"
+        entry: black
+        language: system
+        require_serial: true
+        types_or: [python, pyi]
+      - id: isort
+        name: Isort check
+        entry: isort
+        language: system
+        pass_filenames: true
+        types: [python]
+      - id: check-poetry
+        name: Poetry check
+        description: Validates the structure of the pyproject.toml file
+        entry: poetry check
+        language: system
+        pass_filenames: false
+        files: pyproject.toml
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes

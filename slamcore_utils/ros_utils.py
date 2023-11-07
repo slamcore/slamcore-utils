@@ -31,8 +31,9 @@ from slamcore_utils.arg_parser import add_bool_argument, existing_file
 """ROS Utilities - independent of ROS version."""
 
 # default number of jobs to use for conversion
-DEFAULT_NUM_JOBS=len(os.sched_getaffinity(0))
-DEFAULT_OVERWRITE_OUTPUT_OPT=False
+DEFAULT_NUM_JOBS = len(os.sched_getaffinity(0))
+DEFAULT_OVERWRITE_OUTPUT_OPT = False
+
 
 def _positive_int(val: str):
     def _raise() -> NoReturn:

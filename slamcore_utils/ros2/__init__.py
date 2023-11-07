@@ -22,6 +22,7 @@ __license__ = "SLAMcore Confidential"
 
 
 try:
+    from .conversion_format import ConversionFormat
     from .plugin_utils import (
         get_internal_plugins_dir,
         load_converter_plugins,
@@ -37,8 +38,6 @@ try:
         init_rosbag2_reader,
         init_rosbag2_reader_handle_exceptions,
     )
-
-    from .conversion_format import ConversionFormat
 
     __all__ = [
         "Ros2ConverterPlugin",

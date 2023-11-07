@@ -101,7 +101,6 @@ def compare_dirs(directory: Path, expected_directory: Path):
     ), "Mismatch between number of files in generated and expected directories, len(iterdir) != len(expected_iterdir)"
 
     for file in iterdir:
-
         # find the corresponding file in the expected directory
         path_full = directory / file
         expected_path_full = expected_directory / file.name

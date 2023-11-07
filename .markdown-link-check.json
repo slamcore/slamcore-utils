@@ -1,0 +1,7 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://docs.slamcore.com/release_23.04/ros2-wrapper.html$"
+    }
+  ]
+}

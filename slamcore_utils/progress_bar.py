@@ -99,8 +99,10 @@ except:  # noqa
 
 progress_bar = cast(Type[_ProgressBar], progress_bar)
 
+
 class DummyProgressBar:
     """Progress bar class that does nothing."""
+
     def __init__(self, *args, **kargs):
         pass
 

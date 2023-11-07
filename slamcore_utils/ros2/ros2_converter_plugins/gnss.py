@@ -23,9 +23,9 @@ __license__ = "SLAMcore Confidential"
 
 import csv
 from pathlib import Path
-from geometry_msgs.msg import PoseStamped
 
 import numpy as np
+from geometry_msgs.msg import PoseStamped
 
 from slamcore_utils import DatasetSubdirWriter, MeasurementType
 from slamcore_utils.ros2 import Ros2ConverterPlugin, Ros2PluginInitializationFailureError

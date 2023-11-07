@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pytest
-from slamcore_utils.scripts.convert_rosbag2 import Config, convert_rosbag2
 
 import slamcore_utils.test_utils
+from slamcore_utils.scripts.convert_rosbag2 import Config, convert_rosbag2
 from slamcore_utils.test_utils import UT_Command, get_test_help_cmds, run_UT_commands
 
 try:
@@ -67,7 +67,9 @@ def txt_suffix_handler_mod():
         "flexible_ros2_conversion.jsonc",
     ),
 )
-def test_convert_rosbag2_std_usage(txt_suffix_handler_mod, trimmed_rosbag2: Path, cfg_fname: str):
+def test_convert_rosbag2_std_usage(
+    txt_suffix_handler_mod, trimmed_rosbag2: Path, cfg_fname: str
+):
     cfg_path = toplevel_test_data / cfg_fname
 
     """Make sure that a standard conversion works."""
@@ -111,8 +113,21 @@ def test_convert_rosbag2_faulty_config(trimmed_rosbag2: Path, tmp_path: Path):
 
     cfg = Config(bag_path=trimmed_rosbag2, config_path=cfg_path, output_dir=output_dir)
 
-    with pytest.raises(
-        RuntimeError, match="Unknown conversion format -> unknown_format."
-    ):
+    with pytest.raises(RuntimeError, match="Unknown conversion format -> unknown_format."):
         convert_rosbag2(cfg=cfg)
     assert not output_dir.exists()
+
+
+def test_convert_rosbag2_flexible_config_single_topic_required_non_existent(
+    trimmed_rosbag2: Path, tmp_path: Path
+):
+    cfg_path = (
+        toplevel_test_data
+        / "flexible_ros2_conversion_config_single_topic_required_non_existent.jsonc"
+    )
+    output_dir = tmp_path / "output"
+
+    cfg = Config(bag_path=trimmed_rosbag2, config_path=cfg_path, output_dir=output_dir)
+
+    with pytest.raises(RuntimeError, match='Cannot find topic "/nonexistent_topic"'):
+        convert_rosbag2(cfg=cfg)

@@ -40,4 +40,3 @@ def is_symmetric(arr: np.ndarray, tol=1e-8) -> bool:
         return False
 
     return np.allclose(arr, arr.T, atol=tol)
-

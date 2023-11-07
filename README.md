@@ -99,7 +99,7 @@ slamcore-convert-rosbag2 \
 Notes:
 
 - A test `rosbag2` is included in the test directory of this repo. It's in the
-  [mcap](https://mcap.dev/getting-started/ros-2.html) format. For Ubuntu 20.04
+  [mcap](https://mcap.dev/guides/getting-started/ros-2) format. For Ubuntu 20.04
   and the galactic distribution, you will have to install the
   `ros-galactic-rosbag2-storage-mcap` package to process a `rosbag2` in this
   format.
@@ -170,8 +170,6 @@ Notes:
     - Converter plugins 0       : None
     - Overwrite output directory: True
 
-
-
   INFO | 1685528724.276752680 | rosbag2_storage | Opened database 'tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3' for READ_ONLY.
   INFO | 1685528724.360516990 | rosbag2_storage | Opened database 'tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3' for READ_ONLY.
   13:25:24 | WARNING  -  Finished converting tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3 -> output .
@@ -199,12 +197,9 @@ Notes:
     - Converter plugins 0       : None
     - Overwrite output directory: True
 
-
-
   INFO | 1685528761.113749019 | rosbag2_storage | Opened database 'tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3' for READ_ONLY.
   INFO | 1685528761.195022167 | rosbag2_storage | Opened database 'tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3' for READ_ONLY.
   13:26:01 | DEBUG    -  Rosbag metadata:
-
 
   Files:             tests/test_data/trimmed_rosbag2/trimmed_rosbag2_0.db3
   Bag size:          36.4 MiB
@@ -252,7 +247,7 @@ given that you teach it how to convert them and what type of messages they are.
 You can specify this in a separate python module, and specify this module's
 path during the `slamcore-convert-rosbag2` execution. For example, here's one
 plugin to convert the `TrackingStatus` messages published by the [Slamcore ROS 2
-wrapper](https://docs.slamcore.com/release_23.01/ros2-wrapper.html)
+wrapper](https://docs.slamcore.com/release_23.04/ros2-wrapper.html)
 
 <details>
   <summary>Code in Rosbag2 Converter Plugin - plugin.py</summary>

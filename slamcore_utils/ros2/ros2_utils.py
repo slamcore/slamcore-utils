@@ -22,7 +22,7 @@ __license__ = "SLAMcore Confidential"
 
 import sys
 from pathlib import Path
-from typing import Mapping, Tuple, Dict
+from typing import Dict, Mapping, Tuple
 
 import rosbag2_py
 

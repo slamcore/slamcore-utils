@@ -1,3 +1,4 @@
+from slamcore_utils.__version__ import __version__
 from slamcore_utils.data_converter import DataConverter
 from slamcore_utils.dataset_dir_converter import DatasetDirConverter
 from slamcore_utils.dataset_subdir_writer import DatasetSubdirWriter
@@ -12,7 +13,5 @@ __all__ = [
     "OpenLORISConverter",
     "setup_pkg_logging",
     "MeasurementType",
+    "__version__",
 ]
-
-# TODO Find a way to use this version in pyproject.toml
-__version__ = "0.1.7"

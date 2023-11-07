@@ -1,10 +1,12 @@
+import operator
 from functools import reduce
 from pathlib import Path
 from runpy import run_path
-from slamcore_utils.logging import logger
 from typing import Sequence, cast
-import operator
+
 import pkg_resources
+
+from slamcore_utils.logging import logger
 
 from .ros2_converter_plugin import Ros2ConverterPlugin
 
@@ -35,7 +37,7 @@ def load_converter_plugins_from_multiple_files(
             reduce(
                 operator.concat,
                 (
-                    load_converter_plugins(plugin_path, raise_on_error=raise_on_error)
+                    load_converter_plugins(plugin_path, raise_on_error)
                     for plugin_path in converter_plugin_paths
                 ),
             ),

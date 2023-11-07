@@ -1,0 +1,9 @@
+{
+  "groundtruth0": {
+    "topic": "/irrelevant_gts"
+  },
+  "groundtruth1": {
+    "topic": "/nonexistent_topic",
+    "required": true
+  }
+}

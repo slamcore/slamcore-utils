@@ -24,6 +24,7 @@ __license__ = "SLAMcore Confidential"
 import abc
 from pathlib import Path
 from typing import Type
+
 from slamcore_utils.logging import logger as pkg_logger
 
 

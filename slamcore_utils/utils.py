@@ -28,20 +28,23 @@ def format_list(  # pylint: disable=R0913
     header_sep="=",
     prefix: str = "",
     suffix: str = "",
+    list_start_sep="\n\n",
+    list_end_sep="\n\n",
 ) -> str:
     """
     Format and return a string with the corresponding header and all the items each occupying a
     single line and with the specified indentation.
     """
+    indentation = " " * indent
+    header_indentation = indentation[:-2]
     s = f"{header}: "
     if not items:
         s += " None."
-        return s
-
-    s += "\n" + len(s) * header_sep
-    s += "\n\n"
-    s += "\n".join(f'{" " * indent}{bullet_char} {item}' for item in items)
-    s += "\n\n"
+    else:
+        s += f"\n{header_indentation}{len(s) * header_sep}"
+        s += list_start_sep
+        s += "\n".join(f"{indentation}{bullet_char} {item}" for item in items)
+    s += list_end_sep
     return f"{prefix}{s}{suffix}"
 
 

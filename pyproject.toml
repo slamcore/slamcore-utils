@@ -8,6 +8,7 @@ readme = "README.md"
 
 homepage = "https://github.com/slamcore/slamcore_utils"
 repository = "https://github.com/slamcore/slamcore_utils"
+include = ["slamcore_utils/py.typed"]
 classifiers = [
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",

@@ -25,6 +25,7 @@ __license__ = "Slamcore Confidential"
 
 import sys
 from dataclasses import dataclass, field
+from types import MethodType
 
 from PIL import Image
 
@@ -134,10 +135,9 @@ DEFAULT_STORAGE_TYPE = ""
 # deserialization + putting to the queue is much faster than consuming elements from the Queue
 # which would lead to unbounded mem usage.
 imgq: "queue.Queue[Tuple[Union[RosImage,RosCompressedImage], Path, Callable]]" = queue.Queue(
-    maxsize=2_000
+    maxsize=4_000
 )
 mutex = threading.Lock()
-count = 0
 
 
 # Writers -------------------------------------------------------------------------------------
@@ -173,16 +173,15 @@ class ImuWriter(DatasetSubdirWriter):
 
 
 class CameraWriter(DatasetSubdirWriter):
-    IMG_PUT_TIMEOUT = 5.0
-
-    def __init__(self, directory, *args, **kargs):
-        super().__init__(directory=directory, *args, **kargs)
+    def __init__(self, directory, *, imgq_put_timeout_s: int, **kargs):
+        super().__init__(directory=directory, **kargs)
         self.data_dir = self.directory / "data"
         self.data_dir.mkdir(parents=False, exist_ok=False)
 
         self.ofs_camera = (self.directory / "data.csv").open("w", newline="")
         self.csv_camera = csv.writer(self.ofs_camera, delimiter=",")
         self.csv_camera.writerow(["timestamp [ns]", "filename"])
+        self._imgq_put_timeout_s = imgq_put_timeout_s
 
     def register_ros_msg_type(self, msg_type: str) -> None:
         if msg_type == "sensor_msgs/msg/Image":
@@ -210,12 +209,17 @@ class CameraWriter(DatasetSubdirWriter):
         img_path = self.data_dir / f"{ts}.png"
 
         try:
+            self.logger.debug(
+                f"Adding a new image to the image processing queue, queue size: {imgq.qsize()}"
+            )
             imgq.put(
-                (msg, img_path, self._save_raw_img), block=True, timeout=self.IMG_PUT_TIMEOUT
+                (msg, img_path, self._save_raw_img),
+                block=True,
+                timeout=self._imgq_put_timeout_s,
             )
         except queue.Full as e:
             raise RuntimeError(
-                f"Reached timeout of {self.IMG_PUT_TIMEOUT}s trying to write an image to the "
+                f"Reached timeout of {self._imgq_put_timeout_s}s trying to write an image to the "
                 f"queue. Couldn't write image {img_path.name}. This indicates a bug."
             ) from e
 
@@ -244,15 +248,18 @@ class CameraWriter(DatasetSubdirWriter):
         img_path = self.data_dir / img_fname
 
         try:
+            # self.logger.debug(
+            #     f"Adding a new image to the image processing queue, queue size: {imgq.qsize()}"
+            # )
             imgq.put(
                 (msg, img_path, self._save_compressed_img),
                 block=True,
-                timeout=self.IMG_PUT_TIMEOUT,
+                timeout=self._imgq_put_timeout_s,
             )
         except queue.Full as e:
             raise RuntimeError(
-                f"Reached timeout of {self.IMG_PUT_TIMEOUT}s trying to write an image to the "
-                f"queue. Couldn't write image {img_path.name}. This indicates a bug."
+                f"Reached timeout of {self._imgq_put_timeout_s}s trying to write an image to "
+                f"the queue. Couldn't write image {img_path.name}. This indicates a bug."
             ) from e
 
         self.csv_camera.writerow([ts, img_fname])
@@ -331,12 +338,16 @@ class PoseStampedWriter(DatasetSubdirWriter):
 
     def _log_cov_matrix_warning(self, msg):
         """Wrapper function to only log this warning X times to avoid extra noise in stdout."""
-        if self._cov_matrix_warnings >= 20:
+        if self._cov_matrix_warnings >= 3:
             self.logger.error(
                 f"Encountered more than {self._cov_matrix_warnings} bad covariance matrices."
                 " Will stop printing warnings now."
             )
-            self._log_cov_matrix_warning = lambda *args, **kargs: None
+
+            def increment_warnings_cnt(self, msg) -> None:
+                self._cov_matrix_warnings += 1
+
+            self._log_cov_matrix_warning = MethodType(increment_warnings_cnt, self)
         else:
             self.logger.warning(msg)
         self._cov_matrix_warnings += 1
@@ -377,6 +388,13 @@ class PoseStampedWriter(DatasetSubdirWriter):
         pass
 
     def teardown(self):
+        if self._cov_matrix_warnings:
+            self.logger.error(
+                f"Encountered more than {self._cov_matrix_warnings} bad covariance matrices "
+                f"during conversion for output directory {self.directory}. "
+                "Please have a look at the input data to find out more."
+            )
+
         self.ofs_data.close()
 
 
@@ -413,9 +431,12 @@ measurement_to_msg_type: Mapping[MeasurementType, Sequence[str]] = {
 }
 
 
-def img_worker():
+def img_worker(logger):
     while True:
         item = imgq.get()
+        # logger.debug(
+        #     f"Got  a new image from the image processing queue, queue size: {imgq.qsize()}"
+        # )
         msg = item[0]
         filepath = item[1]
         save_fn = item[2]
@@ -440,11 +461,16 @@ ConversionMap = Mapping[str, ConversionProps]
 # ConversionPropsAssembler class --------------------------------------------------------------
 class ConversionPropsAssembler:
     def __init__(
-        self, sc_dataset_path: Path, rosbag_topics: Mapping[str, str], logger=pkg_logger
+        self,
+        sc_dataset_path: Path,
+        rosbag_topics: Mapping[str, str],
+        imgq_put_timeout_s: int,
+        logger=pkg_logger,
     ):
         self._sc_dataset_path = sc_dataset_path
         self._rosbag_topics = rosbag_topics
         self._logger = logger
+        self._imgq_put_timeout_s = imgq_put_timeout_s
 
     def assemble_from_rigid_format(self, json_conts: JsonConts) -> ConversionMap:
         conversion_map: ConversionMap = {}
@@ -531,10 +557,15 @@ class ConversionPropsAssembler:
     def _init_conversion_props(
         self, key, measurement_type: MeasurementType, topic_name: str
     ) -> ConversionProps:
-        self._logger.debug(f"Mapping {measurement_type.name:15} - {topic_name} -> {key}...")
+        self._logger.info(f"Mapping {measurement_type.name:15} - {topic_name} -> {key}...")
         sc_dataset_subdir = self._sc_dataset_path / key
+
+        extras = {}
+        if measurement_type.is_camera:
+            extras["imgq_put_timeout_s"] = self._imgq_put_timeout_s
+
         writer = measurement_type_to_writer_type[measurement_type](
-            directory=sc_dataset_subdir, logger=self._logger
+            directory=sc_dataset_subdir, logger=self._logger, **extras
         )
         rosbag_msg_type: str = self._rosbag_topics[topic_name]
         writer.register_ros_msg_type(rosbag_msg_type)
@@ -635,6 +666,7 @@ class Config:
     storage_type: str = DEFAULT_STORAGE_TYPE
     use_progress_bar: bool = True
     verbosity_lvl: int = 0
+    imgq_put_timeout_s: int = 20
 
 
 def get_cli_assembled_config() -> Config:
@@ -739,7 +771,7 @@ def convert_rosbag2(cfg: Config, logger=pkg_logger):
         measurement_to_msg_type[cp.measurement_type] = [cp.msg_type]
 
     # load internal plugins -------------------------------------------------------------------
-    logger.debug(
+    logger.info(
         format_list(
             header="Internal converter plugins",
             items=[str(p) for p in internal_converter_plugins],
@@ -768,11 +800,14 @@ def convert_rosbag2(cfg: Config, logger=pkg_logger):
             rosbag_topics.pop(topic_name)
 
     (out_path / "metadata.txt").write_text(str(rosbag_info))
-    logger.debug(f"Rosbag metadata:\n\n{rosbag_info}")
+    logger.info(f"Rosbag metadata:\n\n{rosbag_info}")
 
     # assemble conversion config --------------------------------------------------------------
     conv_props_assembler = ConversionPropsAssembler(
-        sc_dataset_path=out_path, rosbag_topics=rosbag_topics, logger=logger
+        sc_dataset_path=out_path,
+        rosbag_topics=rosbag_topics,
+        imgq_put_timeout_s=cfg.imgq_put_timeout_s,
+        logger=logger,
     )
     logger.info("Validating input config file and contents of rosbag, initializing writers...")
     if conversion_format[0] is ConversionFormat.RIGID:
@@ -785,14 +820,13 @@ def convert_rosbag2(cfg: Config, logger=pkg_logger):
         raise NotImplementedError(f"Cannot process conversion format {conversion_format[0]}")
 
     # initialize progress bar -----------------------------------------------------------------
+    image_msgs_count = 0
     for conversion_props in conversion_map.values():
         if conversion_props.measurement_type.is_camera:
-            with mutex:
-                global count
-                count += message_counts[conversion_props.topic_name]
+            image_msgs_count += message_counts[conversion_props.topic_name]
     global progress_bar_
     if cfg.use_progress_bar:
-        progress_bar_ = progress_bar(total=count)
+        progress_bar_ = progress_bar(total=image_msgs_count)
     else:
         progress_bar_ = DummyProgressBar()
 
@@ -804,7 +838,7 @@ def convert_rosbag2(cfg: Config, logger=pkg_logger):
     # start the PNG encoding workers
     worker_threads: Sequence[threading.Thread] = []
     for _ in range(cfg.jobs):
-        t = threading.Thread(target=img_worker, daemon=True)
+        t = threading.Thread(target=img_worker, daemon=True, args=[logger])
         t.start()
         worker_threads.append(t)
     logger.warning("Consuming rosbag, this may take a while...")
@@ -821,6 +855,7 @@ def convert_rosbag2(cfg: Config, logger=pkg_logger):
                 f"Original error: {e}"
             )
             continue
+
         conversion_map[topic].writer.write(msg)
 
     logger.info("Consumed rosbag.")
